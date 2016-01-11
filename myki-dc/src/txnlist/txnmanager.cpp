@@ -1,0 +1,150 @@
+/**
+ * @file
+ * @copyright 2015 Vix Technology. All rights reserved
+ * $Author: bbrcan $
+ * $Date: 2016-01-05 17:02:19 +1100 (Tue, 05 Jan 2016) $
+ * $Rev: 88212 $
+ * @brief TxnManager class implementation.
+ */
+
+#include "txnmanager.h"
+#include "topupcartitem.h"
+#include "transaction.h"
+#include "helpers.h"
+#include <myki_cd.h>
+#include <cs.h>
+#include <boost/lexical_cast.hpp>
+#include <stdexcept>
+#include <sstream>
+#include <algorithm>
+
+using boost::lexical_cast;
+using namespace std;
+using namespace TxnList;
+
+namespace {
+
+    /**
+     * @brief Functor for checking if a TxnMap member has expired.
+     */
+    class IsExpired 
+    {
+        const Seconds m_reversalPeriod;
+
+        public:
+            IsExpired(Seconds reversalPeriod) : 
+                m_reversalPeriod(reversalPeriod) {}
+
+            bool operator()(const TxnMap::value_type &item) const
+            {
+                time_t currentTime = time(NULL);
+                time_t expiry = item.second->getTimestamp() + m_reversalPeriod;
+
+                return (currentTime > expiry);
+                return false;
+            }
+    };
+
+    /**
+     * @brief Functor for checking if a Transaction shared_ptr equals a raw
+     * Transaction ptr.
+     */
+    class TransactionPtrEquals
+    {
+        const Transaction *m_ptr;
+
+        public:
+            TransactionPtrEquals(const Transaction *ptr) : m_ptr(ptr) {}
+
+            bool operator()(const TxnMap::value_type &item) const
+            {
+                return (item.second.get() == m_ptr);
+            }
+    };
+}
+
+TxnManager::TxnManager() 
+{
+    // reversal period is stored in CD in MINUTES
+    U16_t reversalPeriodMinutes = 0;
+
+    if (!MYKI_CD_getReversalPeriod(&reversalPeriodMinutes))
+    {
+        throw runtime_error("Call to MYKI_CD_getReversalPeriod failed.");
+    }
+
+    CsDbg(4, "TxnManager: reversal period is %d mins", reversalPeriodMinutes);
+
+    // convert reversal period to seconds
+    m_reversalPeriod = reversalPeriodMinutes * 60;
+}
+
+void TxnManager::removeExpiredTransactions()
+{
+    CsDbg(4, "TxnManager::removeExpiredTransactions");
+    map_erase_if(m_txnMap, IsExpired(m_reversalPeriod));
+}
+
+TransactionPtr TxnManager::getTransaction(TxnSequenceNumber saleSequenceNumber)
+{
+    CsDbg(4, "TxnManager::getTransaction: %d", saleSequenceNumber);
+    removeExpiredTransactions();
+
+    TxnMap::iterator iter = m_txnMap.find(saleSequenceNumber);
+
+    if (iter != m_txnMap.end())
+    {
+        return iter->second;
+    }
+
+    return TransactionPtr();
+}
+
+void TxnManager::addTransaction(TxnSequenceNumber saleSequenceNumber, 
+        const TransactionPtr &txnPtr)
+{
+    CsDbg(4, "TxnManager::addTransaction: %d", saleSequenceNumber);
+
+    if (!m_txnMap.insert(make_pair(saleSequenceNumber, txnPtr)).second)
+    {
+        throw runtime_error("Transaction " + 
+                lexical_cast<string>(saleSequenceNumber) + " exists");
+    }
+}
+
+void TxnManager::removeTransaction(const Transaction &txn)
+{
+    CsDbg(4, "TxnManager::removeTransaction: %p", &txn);
+    map_erase_if(m_txnMap, TransactionPtrEquals(&txn));
+}
+
+void TxnManager::loadFromFile()
+{
+    TxnMap tmp = m_txnMap;
+
+    try {
+        m_backupManager.load(*this);
+    }
+    catch (exception &e)
+    {
+        // copy back original transactions on failure
+        m_txnMap = tmp;
+        throw;
+    }
+}
+
+void TxnManager::saveToFile()
+{
+    m_backupManager.save(m_txnMap);
+}
+
+void TxnManager::clear()
+{
+    m_txnMap.clear();
+}
+
+Json::Value TxnManager::toJson()
+{
+    removeExpiredTransactions();
+    return ::toJson(m_txnMap);
+}

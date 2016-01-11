@@ -1,0 +1,570 @@
+#include <iostream>
+#include <iomanip>
+#include <sstream> 
+#include <cerrno>
+#include <cstdlib>
+#include <time.h>
+#include <csfcmd.h>
+#include <Serial.h>
+#include "MykiPrinter.h"
+
+const int MAX_ROW_LENGTH = 36;            //Max characters per row in Normal font
+
+/*
+   Helper functions for myki printer
+*/
+
+void replaceString( std::string& str, const std::string& oldStr, const std::string& newStr );
+
+std::string formatAmount( int nNumber );
+std::string formatIDNumber( int nNumber );
+
+template <typename T>
+std::string NumberToString(T num)
+{
+    using namespace std;
+    stringstream converter;
+    converter << num;
+    return converter.str();
+}
+
+
+/*==========================================================================*
+ **
+ **  MykiPrinter
+ **
+ **  Description     :
+ **      Constructor that initialises the connection to the serial port. 
+ **
+ **      Also subscribes a task id and an IPC message to the serial class provided by 
+ **      'reportRecieveCharacter_SourceQueueId' and 'reportRecieveCharacter_SourceQueueId'.
+ **      This will be used by the read thread internally in the serial class. 
+ **      Any received data coming from the serial port will be reported to the message queue 
+ **      provided by reportRecieveCharacter_SourceQueueId.
+ **      
+ **  Parameters      :
+ **      JSONFilePath                                       [I]     Path to JSON template
+ **      reportRecieveCharacter_SourceQueueId               [I]     Task ID
+ **      reportRecieveCharacter_MessageId                   [I]     IPC message ID
+ **      port                                               [I]     Serial port to connect to
+ **      speed                                              [I]     speed baud rate
+ **      data_bits                                          [I]     typically 8
+ **      parity                                             [I]     'n', 'o', 'e', 'm', 's' 
+ **      stop_bits                                          [I]     1 or 2
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **
+ **==========================================================================*/
+MykiPrinter::MykiPrinter(char *JSONFilePath, 
+                         int reportRecieveCharacter_SourceQueueId, 
+						 int reportRecieveCharacter_MessageId,
+                         const char* port, 
+						 unsigned long speed, 
+						 unsigned int data_bits, 
+						 char parity, 
+						 unsigned int stop_bits)
+: SerialPrinter(reportRecieveCharacter_SourceQueueId, 
+                reportRecieveCharacter_MessageId, 
+				port, 
+				speed, 
+				data_bits, 
+				parity, 
+				stop_bits)
+{
+    m_jsonParser = new JSONParser(JSONFilePath);
+}
+
+/*==========================================================================*
+ **
+ **  printTopUpReversal
+ **
+ **  Description     :
+ **      Public interface of the application to send request to print a Top up receipt
+ **      
+ **  Parameters      :
+ **      pTopUpRevStruct              IPC message containing fields of the receipt
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **
+ **==========================================================================*/
+int MykiPrinter::printTopUpReversal(IPC_Reversal_TpurseLoad_t *pTopUpRevStruct)
+{
+    const enum receipt_e tax_receipt = Reversal;
+	
+	Json::Value titleData	= m_jsonParser->getTitle(tax_receipt);
+    Json::Value headerData	= m_jsonParser->getHeader(tax_receipt);     
+    Json::Value bodyData    = m_jsonParser->getBody(tax_receipt); 
+    Json::Value footerData  = m_jsonParser->getFooter(tax_receipt);     
+	
+	populateTopUpRevPlaceHolder( titleData,  pTopUpRevStruct );
+	populateTopUpRevPlaceHolder( headerData, pTopUpRevStruct );
+	populateTopUpRevPlaceHolder( bodyData,   pTopUpRevStruct );
+	populateTopUpRevPlaceHolder( footerData, pTopUpRevStruct );
+	
+	// Final line feeds and cut
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	
+	sendCommand(PARTIAL_CUT);
+	
+	return 0;
+}
+
+/*==========================================================================*
+ **
+ **  populateTopUpRevPlaceHolder
+ **
+ **  Description     :
+ **      Helper function to replace any placeholders provided in the template
+ **      
+ **  Parameters      :
+ **      data                          json template containing the fields to render
+ **      pPrinterMsg                   pointer to Top Up IPC data structure
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **      Refer to the json template on how to structure it.
+ **==========================================================================*/
+void MykiPrinter::populateTopUpRevPlaceHolder(Json::Value &data, IPC_Reversal_TpurseLoad_t *pReversalStruct)
+{
+	// Replace specific receipt place holders with values
+	Json::Value::Members lines = data.getMemberNames();
+		
+	for ( unsigned int index = 0; index < lines.size(); index++ )
+    {
+        std::string memberName = lines[index];
+				
+	    if( data[memberName]["hasPlaceHolder"].asBool() )
+        {
+			std::string temp = data[memberName]["data"].asString();    
+	
+	        CsDebug(3, (3, "MykiPrinter::populatePlaceHolder:: temp:%s",temp.c_str()));
+	
+            this->populateCompanyHolders( temp, &(pReversalStruct->companyData) );	            
+			
+			// Top Up specific fields
+			if( temp.find("[AmountTopUp]") != std::string::npos ) 
+				replaceString( temp, "[AmountTopUp]", formatAmount(pReversalStruct->amountTopUp) ); 
+			
+			if( temp.find("[AmountNewBalance]") != std::string::npos ) 
+				replaceString( temp, "[AmountNewBalance]", formatAmount(pReversalStruct->amountNewBalance) );  
+			
+			if( temp.find("[AmountTotal]") != std::string::npos ) 
+				replaceString( temp, "[AmountTotal]", formatAmount(pReversalStruct->amountTotal) ); 
+			
+			if( temp.find("[OrigShiftNumber]") != std::string::npos ) 
+				replaceString( temp, "[OrigShiftNumber]",  formatIDNumber( pReversalStruct->commonData.shiftNumber ));
+			
+            if( temp.find("[OrigTransactionNumber]") != std::string::npos ) 
+				replaceString( temp, "[OrigTransactionNumber]",  formatIDNumber( pReversalStruct->origTransactionNumber ));
+			
+			if( temp.find("[OrigDate]") != std::string::npos ) 
+			{
+                tm currentTime = *localtime( &(pReversalStruct->origDate) ); 
+                char tmdescr[30]={0};
+                                
+                if( strftime( tmdescr, sizeof(tmdescr)-1, "%d %b %y %I:%M %p",  &currentTime ) == 0 )
+                {
+                    CsErrx("MykiPrinter::populateTopUpRevPlaceHolder Error formatting the orig time ", errno);
+                }
+                replaceString( temp, "[OrigDate]",  tmdescr );
+            }	
+			
+			this->populateCommonHolders( temp, &(pReversalStruct->commonData) );		 
+	        
+			CsDebug(3, (3, "MykiPrinter::populatePlaceHolder:: 2 temp:%s",temp.c_str()));
+			
+			data[memberName]["data"] = temp;
+	    }
+		
+		// Format output and print
+	    this->render( data[memberName] );
+	}	
+
+}
+
+
+/*==========================================================================*
+ **
+ **  printTopUp
+ **
+ **  Description     :
+ **      Public interface of the application to send request to print a Top up receipt
+ **      
+ **  Parameters      :
+ **      pTopUpStruct          IPC message containing fields of the receipt
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **
+ **==========================================================================*/
+int MykiPrinter::printTopUp(IPC_Printer_TpurseLoad_t *pTopUpStruct)
+{
+    const enum receipt_e tax_receipt = TopUp;
+	
+	Json::Value titleData	= m_jsonParser->getTitle(tax_receipt);
+    Json::Value headerData	= m_jsonParser->getHeader(tax_receipt);     
+    Json::Value bodyData    = m_jsonParser->getBody(tax_receipt); 
+    Json::Value footerData  = m_jsonParser->getFooter(tax_receipt);     
+	
+	populateTopUpPlaceHolder( titleData,  pTopUpStruct );
+	populateTopUpPlaceHolder( headerData, pTopUpStruct );
+	populateTopUpPlaceHolder( bodyData,   pTopUpStruct );
+	populateTopUpPlaceHolder( footerData, pTopUpStruct );
+	
+	// Final line feeds and cut
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	sendCommand(LINE_FEED);
+	
+	sendCommand(PARTIAL_CUT);
+	
+	return 0;
+}
+
+
+/*==========================================================================*
+ **
+ **  populateTopUpPlaceHolder
+ **
+ **  Description     :
+ **      Helper function to replace any placeholders provided in the template
+ **      
+ **  Parameters      :
+ **      data                  json template containing the fields to render
+ **      pPrinterMsg           pointer to Top Up IPC data structure
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **      Refer to the json template on how to structure it.
+ **==========================================================================*/
+void MykiPrinter::populateTopUpPlaceHolder(Json::Value &data, IPC_Printer_TpurseLoad_t *pTopUpStruct)
+{
+	// Replace specific receipt place holders with values
+	Json::Value::Members lines = data.getMemberNames();
+	
+	for ( unsigned int index = 0; index < lines.size(); index++ )
+    {
+        std::string memberName = lines[index];
+		if( data[memberName].isMember("condition") )
+            if( data[memberName]["condition"].asString().compare("RIMP")  && 
+		       ( pTopUpStruct->receiptInvoiceThreshold - pTopUpStruct->amountTotal >= 0.01 ) 
+		      )
+			{
+				continue;
+			}  		
+		
+	    if( data[memberName]["hasPlaceHolder"].asBool() )
+        {
+			std::string temp = data[memberName]["data"].asString();    
+  
+	        CsDebug(3, (3, "MykiPrinter::populatePlaceHolder:: temp:%s",temp.c_str()));
+	
+            this->populateCompanyHolders( temp, &(pTopUpStruct->companyData) );	
+            
+			// Top Up specific fields
+			if( temp.find("[AmountTopUp]") != std::string::npos ) 
+				replaceString( temp, "[AmountTopUp]", formatAmount(pTopUpStruct->amountTopUp) ); 
+			
+			if( temp.find("[AmountNewBalance]") != std::string::npos ) 
+				replaceString( temp, "[AmountNewBalance]", formatAmount(pTopUpStruct->amountNewBalance) );  
+			
+			if( temp.find("[AmountTotal]") != std::string::npos ) 
+				replaceString( temp, "[AmountTotal]", formatAmount(pTopUpStruct->amountTotal) ); 
+			
+			if( temp.find("[RIMP]") != std::string::npos ) 
+				replaceString( temp, "[RIMP]", NumberToString(pTopUpStruct->receiptInvoiceThreshold) );
+			
+			this->populateCommonHolders( temp, &(pTopUpStruct->commonData) );		 
+           
+			data[memberName]["data"] = temp;
+	    }
+		
+		// Format output and print
+	    this->render( data[memberName] );
+	}	
+
+}
+
+
+/*==========================================================================*
+ **
+ **  render
+ **
+ **  Description     :
+ **      renders the json template replacing any placeholders provided in the IPC message and 
+ **      applies the necessary fonts specified by the json template.
+ **      
+ **  Parameters      :
+ **      data                  json template containing the fields to render
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **      Refer to the json template on how to structure it.
+ **==========================================================================*/
+void MykiPrinter::render(Json::Value &data)//, std::string memberName) 
+{
+	// Search for emphasize attributes 
+    data["isBold"].asBool() ? sendCommand(SET_BOLD) : sendCommand(UNSET_BOLD);
+	
+	// Search for font attributes
+    data["font"].asString().compare("small") ?  sendCommand(SMALL_FONT) : sendCommand(DEFAULT_FONT);
+		
+	// Search for justification attributes
+	std::string temp = data["data"].asString();
+    		
+	std::string strRightHolder("[Right]");
+	std::size_t nRightPos  = temp.find(strRightHolder);
+		
+    std::string strMiddleHolder("[Middle]");
+	std::size_t nMiddlePos = temp.find(strMiddleHolder);		
+		
+	if( ( nRightPos != std::string::npos ) || ( nMiddlePos != std::string::npos ) )
+	{				
+		if ( nRightPos != std::string::npos )
+		{
+			// Cut line before [Right] holder and append spaces to fill MAX_ROW_LENGTH, then print
+			int countSpace = MAX_ROW_LENGTH - temp.length() + strRightHolder.length();
+			
+			if( countSpace < 0 )
+				countSpace = 0;
+			
+			print( temp.substr(0, nRightPos - 1).append(countSpace, ' ') );
+		    print( temp.substr(nRightPos + strRightHolder.length()) );
+            
+			std::cout  << "print: " << temp.substr(0, nRightPos - 1).append(countSpace, ' ')
+       				   << temp.substr(nRightPos + strRightHolder.length()) << std::endl;
+		}
+        else
+		{
+			print( temp.substr( 0, nMiddlePos ) );
+			//sendCommand(MID_JUSTIFY);
+			print( temp.substr( nMiddlePos + strMiddleHolder.length() ) );
+		}		            
+		//sendCommand(LEFT_JUSTIFY);			
+	} 
+	else
+    {
+		// Print default justification
+	    std::cout  << "print: " << data["data"].asString() << std::endl;
+        print( data["data"].asString() ); 
+	}
+		
+	sendCommand(LINE_FEED);
+	
+}
+
+
+/*==========================================================================*
+ **
+ **  populateCommonHolders
+ **
+ **  Description     :
+ **      Replaces general placeholders provided in the JSON template file with 
+ **      their values from IPC structure.
+ **      
+ **  Parameters      :
+ **      dataString           json template line with data
+ **      pPrinterMsg          pointer to data structure containing general fields valid for all receipts
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **      None
+ **==========================================================================*/
+void MykiPrinter::populateCommonHolders(std::string &dataString, IPC_Common_Details_t *pCommonData)
+{
+	// IDs and location data
+	if( dataString.find("[TerminalID]") != std::string::npos ) 
+        replaceString( dataString, "[TerminalID]", NumberToString( pCommonData->terminalID ) );              
+    
+	if( dataString.find("[Location]") != std::string::npos) 
+        replaceString( dataString, "[Location]", pCommonData->location ); 
+
+	if( dataString.find("[BusID]") != std::string::npos ) 
+        replaceString( dataString, "[BusID]",  NumberToString( pCommonData->busID ) );
+	
+	if( dataString.find("[ShiftNumber]") != std::string::npos ) 
+        replaceString( dataString, "[ShiftNumber]",  formatIDNumber( pCommonData->shiftNumber ) );
+	
+	if( dataString.find("[TransactionNumber]") != std::string::npos ) 
+        replaceString( dataString, "[TransactionNumber]",  formatIDNumber( pCommonData->transactionNumber ) );
+	
+	if( dataString.find("[MykiReference]") != std::string::npos ) 
+    {
+		if(std::string(pCommonData->mykiReference).length() < 15)
+		{
+			// Reference is shorter than expected, do not format, just print
+			CsWarnx("MykiPrinter::populateCommonHolders MykiReference %s is shorter than expected", pCommonData->mykiReference);
+			replaceString( dataString, "[MykiReference]", pCommonData->mykiReference );
+		}
+		else
+		{
+			
+		
+			// Cut symbols between 7 and 11 and mask them with XXXXX
+			std::string strMyKi = std::string(pCommonData->mykiReference).substr(0,6) 
+									+ "XXXXX" 
+									+ std::string(pCommonData->mykiReference).substr(11);
+			
+			CsDebug(3, (3, "MykiPrinter::populatePlaceHolder:: MykiReference:%s",pCommonData->mykiReference));
+			
+			// Add some spaces to format according to spec
+			strMyKi.insert(1, 1, ' ');
+			strMyKi.insert(7, 1, ' ');
+			strMyKi.insert(12, 1, ' ');
+			strMyKi.insert(17, 1, ' ');
+			
+			replaceString( dataString, "[MykiReference]", strMyKi );        
+		}
+        CsDebug(3, (3, "MykiPrinter::populatePlaceHolder:: replaceString:%s",dataString.c_str()));		
+	}	
+	
+	if( dataString.find("[Message]") != std::string::npos ) 
+        replaceString( dataString, "[Message]",  pCommonData->salesMessage );	
+	
+	// Get current date
+	if( dataString.find("[Date]") != std::string::npos )
+    {
+		time_t timeStruct = time(0); 
+        tm currentTime = *localtime(&timeStruct); 
+        char tmdescr[30]={0};
+     
+        if( strftime(tmdescr, sizeof(tmdescr)-1, "%d %b %y %I:%M %p", &currentTime) == 0 )
+		{
+			CsErrx("MykiPrinter::populatePlaceHolder Error formatting the time ", errno);
+		}
+	    replaceString( dataString, "[Date]",  tmdescr );
+	}	
+}
+
+/*==========================================================================*
+ **
+ **  populateCompanyHolders
+ **
+ **  Description     :
+ **      Replaces company placeholders provided in the JSON template file with 
+ **      their values from IPC structure.
+ **      
+ **  Parameters      :
+ **      dataString           json template line with data
+ **      pCompanyData         pointer to data structure containing company data valid for all receipts
+ **
+ **  Returns         :
+ **      None
+ **
+ **  Notes           :
+ **      None
+ **==========================================================================*/
+void MykiPrinter::populateCompanyHolders(std::string &dataString, IPC_Company_Details_t *pCompanyData)
+{
+	// Company data	
+	if( dataString.find("[CompanyPhone]") != std::string::npos ) 
+	    replaceString( dataString, "[CompanyPhone]", pCompanyData->companyPhone ); 
+		
+	if( dataString.find("[CompanyName]") != std::string::npos ) 
+	    replaceString( dataString, "[CompanyName]", pCompanyData->companyName );
+		
+	if( dataString.find("[CompanyABN]") != std::string::npos ) 
+        replaceString( dataString, "[CompanyABN]", pCompanyData->companyABN );
+	
+	if( dataString.find("[CompanyWebSite]") != std::string::npos ) 
+        replaceString( dataString, "[CompanyWebSite]", pCompanyData->companyWebSite );
+}
+
+
+MykiPrinter::~MykiPrinter()
+{
+    delete m_jsonParser;
+}
+
+/*==========================================================================*
+ **
+ **  replaceString
+ **
+ **  Description     :
+ **      Replaces all occurrences of a string in another string
+ **      
+ **  Parameters      :
+ **      str                 string to be manipuated
+ **      oldStr              string to be replaced
+ **      newStr              string to put in
+ **  Returns         :
+ **      None
+ **
+ **==========================================================================*/
+void replaceString(std::string& str, const std::string& oldStr, const std::string& newStr)
+{
+    size_t pos = 0;
+    while( (pos = str.find(oldStr, pos)) != std::string::npos )
+    {
+        str.replace(pos, oldStr.length(), newStr);
+        pos += newStr.length();
+    }
+}
+
+
+/*==========================================================================*
+ **
+ **  formatAmount
+ **
+ **  Description     :
+ **      Displays amount variables as currency values
+ **      
+ **  Parameters      :
+ **      nNumber             amount coming from DC (it is multiplied by 100 and stored as int)
+ **
+ **  Returns         :
+ **      std::string         formatted string
+ **
+ **==========================================================================*/
+std::string formatAmount( int nNumber )
+{
+	std::ostringstream strAmount;
+
+	strAmount << nNumber / 100 << '.' << std::setw(2) << std::setfill('0') << nNumber % 100;
+	
+	return strAmount.str();
+}
+
+/*==========================================================================*
+ **
+ **  formatIDNumber
+ **
+ **  Description     :
+ **      Formats transaction ID and shift number to NNNN 
+ **      
+ **  Parameters      :
+ **      nNumber             initial ID value
+ **
+ **  Returns         :
+ **      std::string         formatted string
+ **
+ **==========================================================================*/
+std::string formatIDNumber( int nNumber )
+{
+	std::ostringstream strAmount;
+
+	strAmount << std::setfill('0') << std::setw(4) << nNumber;
+	
+	return strAmount.str();
+}
+

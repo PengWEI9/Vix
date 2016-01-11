@@ -1,0 +1,134 @@
+/**
+ * @file
+ * @copyright 2015 Vix Technology. All rights reserved
+ * $Author$
+ * $Date$
+ * $Rev$
+ * @brief PrinterBackupManager class implementation.
+ */
+
+#include "printerbackupmanager.h"
+#include "printermsg/binaryprintermsg.h"
+#include "printermsg/jsonprintermsg.h"
+#include <csf.h>
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+
+using namespace PrinterBackup;
+using namespace std;
+
+template <typename T>
+std::string objectToString(const T &data, int msgType)
+{
+    const size_t dataSize = sizeof(data);
+    const size_t msgTypeSize = sizeof(msgType);
+    const size_t bufSize = dataSize + msgTypeSize;
+
+    char buf[bufSize] = {0};
+
+    // copy msgType
+    memcpy(buf, reinterpret_cast<const char *>(&msgType), msgTypeSize);
+    // copy actual object
+    memcpy(buf + msgTypeSize, reinterpret_cast<const char*>(&data), dataSize);
+    return string(buf, bufSize);
+}
+
+/**
+ * @brief Returns the path to the printer backup directory, as specified in the
+ *        .ini config files.
+ * @throw runtime_error If unable to retrieve ini value.
+ */
+static string backupDir()
+{
+    char buf[CSFINI_MAXVALUE];
+
+    if (CsfIniExpand("General:PrinterBackupPath", buf, CSFINI_MAXVALUE) != 0)
+    {
+        throw runtime_error("Unable to retrieve PrinterBackupPath.");
+    }
+
+    return string(buf);
+}
+
+PrinterBackupManager::PrinterBackupManager(IpcMessageQueueId printerTaskId) :
+    m_printerTaskId(printerTaskId),
+    m_backupManager(backupDir(), "printermsg", ".dat") {}
+
+void PrinterBackupManager::save(const IPC_Printer_TpurseLoad_t &tpurseLoad, 
+        time_t timestamp)
+{
+    CsDbg(4, "PrinterBackupManager::save: tpurse load receipt.");
+
+    m_backupManager.save(objectToString(tpurseLoad, IPC_PRINTER_TPURSELOAD),
+            timestamp);
+}
+
+void PrinterBackupManager::save(const IPC_Reversal_TpurseLoad_t &tpurseReversal,
+        time_t timestamp)
+{
+    CsDbg(4, "PrinterBackupManager::save: tpurse load reversal receipt.");
+
+    m_backupManager.save(objectToString(tpurseReversal, 
+                IPC_PRINTER_TPURSELOAD_REV), timestamp);
+}
+
+void PrinterBackupManager::save(const IPC_DriverShiftReport_t &shiftReport,
+        time_t timestamp)
+{
+    CsDbg(4, "PrinterBackupManager::save: driver shift report.");
+
+    m_backupManager.save(objectToString(shiftReport, 
+                IPC_PRINTER_DRIVER_SHIFT_REP), timestamp);
+}
+
+void PrinterBackupManager::save(const std::string &data, time_t timestamp)
+{
+    m_backupManager.save(data, timestamp);
+}
+
+void PrinterBackupManager::reprint()
+{
+    CsDbg(4, "PrinterBackupManager::reprint: loading last receipt");
+
+    string data = m_backupManager.load();
+
+    if (data.empty())
+    {
+        CsDbg(4, "PrinterBackupManager::reprint: nothing to reprint.");
+        return;
+    }
+    
+    int msgType = 0;
+    memcpy(static_cast<void*>(&msgType), data.c_str(), sizeof(msgType));
+
+    if (msgType == IPC_PRINTER_TPURSELOAD)
+    {
+        IPC_Printer_TpurseLoad_t msg = {};
+        memcpy(&msg, data.c_str() + sizeof(msgType) , sizeof(msg));
+        BinaryPrinterMsg<IPC_Printer_TpurseLoad_t>(msg).print(m_printerTaskId);
+    }
+    else if (msgType == IPC_PRINTER_TPURSELOAD_REV)
+    {
+        IPC_Reversal_TpurseLoad_t msg = {};
+        memcpy(&msg, data.c_str() + sizeof(msgType), sizeof(msg));
+        BinaryPrinterMsg<IPC_Reversal_TpurseLoad_t>(msg).print(m_printerTaskId);
+    }
+    else if (msgType == IPC_PRINTER_DRIVER_SHIFT_REP)
+    {
+        IPC_DriverShiftReport_t msg = {};
+        memcpy(&msg, data.c_str() + sizeof(msgType), sizeof(msg));
+        BinaryPrinterMsg<IPC_DriverShiftReport_t>(msg).print(m_printerTaskId);
+    }
+    else
+    {
+        Json::Value json;
+
+        if (Json::Reader().parse(data, json) == false)
+        {
+            throw runtime_error("Error reading receipt backup.");
+        }
+
+        JsonPrinterMsg(json).print(m_printerTaskId);
+    }
+}

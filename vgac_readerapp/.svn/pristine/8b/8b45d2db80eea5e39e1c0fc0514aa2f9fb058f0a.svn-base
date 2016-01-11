@@ -1,0 +1,102 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MVU
+**  Filename        : cardfunctions.h
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief  Declares function prototypes to process card instructions.
+*/
+/*  Member(s)       :
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id$
+**      $HeadURL$
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  04.09.15    ANT   Create
+**
+**===========================================================================*/
+
+#if     !defined( __CARDFUNCTIONS_H_INCLUDED )
+#define __CARDFUNCTIONS_H_INCLUDED      1
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <string>
+#include <json/json.h>
+
+/*
+ *      Constants and Macros
+ *      --------------------
+ */
+
+#define WEBSERVICE_RESULTS\
+    WEBSERVICE_RESULT_DECLARATION(WS_SUCCESS),                      /*  Successful */\
+    WEBSERVICE_RESULT_DECLARATION(WS_UNCONFIRMED),                  /*  Unconfirmed transaction */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR),                        /*  Error - Catch all */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_INVALID_PIN),            /*  Error - Invalid PIN */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_BLOCKED),                /*  Error - Too many PIN retries */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_NOT_OPERATOR_CARD),      /*  Error - Not OPERATOR card */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_NOT_TRANSIT_CARD),       /*  Error - Not TRANSIT card */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_OPEN_CARD),              /*  Error - Failed opening card */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_READ_CARD),              /*  Error - Failed reading card */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_WRITE_CARD),             /*  Error - Failed writing card */\
+    WEBSERVICE_RESULT_DECLARATION(WS_ERROR_WRONG_CARD)              /*  Error - Wrong card */
+
+/*
+ *      Data Types
+ *      ----------
+ */
+
+#define WEBSERVICE_RESULT_DECLARATION( a )  a
+typedef enum
+{
+    WEBSERVICE_RESULTS,
+    WEBSERVICE_RESULT_MAX
+
+}   WebServiceResult_e;
+#undef  WEBSERVICE_RESULT_DECLARATION
+
+/*
+ *      Prototypes
+ *      ----------
+ */
+
+    /*  WebService handlers */
+std::string processValidatePIN( Json::Value &request );
+std::string processChangePIN( Json::Value &request );
+std::string processTPurseLoad( Json::Value &request );
+std::string processTPurseLoadReversal( Json::Value &request );
+std::string processValidateTransitCard( Json::Value &request );
+std::string processCardRemoved( Json::Value &request );
+std::string processPassengerCount( Json::Value &request );
+
+int         getJsonInt( Json::Value &request, const char *pName );
+std::string getJsonString( Json::Value &request, const char *pName );
+bool        getJsonBool( Json::Value &value, const char *pName );
+void        createBaseResponse( Json::Value &request, Json::Value &response );
+std::string getResultString( WebServiceResult_e WebServiceResult );
+std::string getRejectReasonString( MYKI_BR_RejectReason_t reason );
+std::string getAcceptReasonString( MYKI_BR_AcceptReason_t reason );
+int         getRemainingValue( void );
+std::string getExpiry( MYKI_BR_ContextData_t *pData );
+
+#endif  /*  !__CARDFUNCTIONS_H_INCLUDED */

@@ -1,0 +1,131 @@
+#include <cs.h>
+#include <csf.h>
+#include <cstdlib>
+#include <cstring>
+#include <ipc.h>
+#include <message_base.h>
+#include <message_dc.h>
+//#include <jsonParser.h>
+
+typedef enum
+{	
+   IPC_TOPUP = 1,
+   IPC_TOPUP_REV = 2
+   
+} IPC_MESSAGE_TYPE_E;
+
+int printerQueueId = -1;                                              // Incoming queue; also posted to by our serial receive thread
+
+void fillCommonDataStruct(IPC_Common_Details_t *pCommonData)
+{
+	pCommonData->terminalID        = 128934;	
+	pCommonData->busID             = 123456;
+	pCommonData->shiftNumber       = 123;
+	pCommonData->transactionNumber = 56; 
+	
+	strcpy(pCommonData->location,"Geelong Rail");	
+	strcpy(pCommonData->mykiReference,"308425123455115");
+	strcpy(pCommonData->salesMessage,"Sales message sample");
+	
+}
+
+void fillCompanyDataStruct(IPC_Company_Details_t *pCompanyData)
+{
+	strcpy(pCompanyData->companyPhone,"+61312345678");
+	strcpy(pCompanyData->companyName,"Test Company");
+	strcpy(pCompanyData->companyABN,"NN NNN NNN NNN");
+	strcpy(pCompanyData->companyWebSite,"https://translate.google.com.au/?hl=en");
+	
+}
+
+void fillTopUpTestStruct( IPC_Printer_TpurseLoad_t * pBuf )
+{
+	memset( pBuf, 0,  sizeof(IPC_Printer_TpurseLoad_t) );
+
+    pBuf->hdr.type                     = IPC_PRINTER_TPURSELOAD;
+    pBuf->hdr.source                   = DC_PRINTER_TASK;
+    
+	fillCommonDataStruct( &(pBuf->commonData) );
+	
+	pBuf->receiptInvoiceThreshold      = 1000;
+	pBuf->amountNewBalance             = 1005;
+	pBuf->amountTopUp                  = 200;
+	pBuf->amountTotal                  = 10000;
+	
+	fillCompanyDataStruct( &(pBuf->companyData) );	
+	
+}
+
+void fillTopUpRevTestStruct(IPC_Reversal_TpurseLoad_t * pBuf)
+{
+	memset(pBuf, 0,  sizeof(IPC_Reversal_TpurseLoad_t));
+    
+	pBuf->hdr.type                     = IPC_PRINTER_TPURSELOAD_REV;
+    pBuf->hdr.source                   = DC_PRINTER_TASK;
+    	
+	fillCommonDataStruct( &(pBuf->commonData) );
+	
+	pBuf->amountNewBalance             = 1050;
+	pBuf->amountTopUp                  = 2008;
+	pBuf->amountTotal                  = 10070;
+	
+	pBuf->origTransactionNumber        = 5678;
+    
+	pBuf->origDate = time(0); 
+    
+	fillCompanyDataStruct( &(pBuf->companyData) );
+	
+}
+
+int main(int argc, char *argv[])
+{
+	int sendResult = 0;
+	int initResult = 0;	
+	int iChoice    = 0;
+	
+    atexit((void (*)())IpcClose);
+    
+	if( argc < 2 )
+		iChoice = IPC_TOPUP;
+	else
+        iChoice = atoi(argv[1]);
+	
+    if ( ( initResult = IpcInit() ) != 0 )                           // Initialize IPC communication
+    {
+        CsErrx("main:: IpcInit FAILED result %d", initResult);
+        return -1;
+    }
+	
+    printerQueueId   = IpcGetID(DC_PRINTER_TASK); 
+
+	switch(iChoice)
+	{
+		case IPC_TOPUP:
+		    IPC_Printer_TpurseLoad_t  topUpBuf;
+			fillTopUpTestStruct(&topUpBuf);
+			
+		    if( ( sendResult = IpcSend(printerQueueId, &topUpBuf, sizeof topUpBuf) ) != 0 )  
+			    CsErrx("main:: FAILED TO SEND IPC_TOPUP MESSAGE  %d", sendResult);			
+			else
+			    CsDebug(3, (3, "main:: SENDING IPC_TOPUP MESSAGE")); 
+			break;
+			
+		case IPC_TOPUP_REV:
+		    IPC_Reversal_TpurseLoad_t topUpRevBuf;
+			fillTopUpRevTestStruct(&topUpRevBuf);
+			
+			if( ( sendResult = IpcSend(printerQueueId, &topUpRevBuf, sizeof topUpRevBuf) ) != 0 )  
+			    CsErrx("main:: FAILED TO SEND IPC_TOPUP_REV MESSAGE  %d", sendResult);
+			else
+			    CsDebug(3, (3, "main:: SENDING IPC_TOPUP_REV MESSAGE")); 
+			break;
+			
+		default:
+		    CsWarnx("Unknown message type");
+		    break;
+	}	
+	
+    return 0;
+}
+
+

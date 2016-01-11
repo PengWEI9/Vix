@@ -1,0 +1,11 @@
+# Process Manager information file
+Name = alarm_command
+Alias = clear_alarms
+StartScript =  test -f /afc/etc/commissioned.ini && test -f /afc/etc/alarm.ini && /afc/bin/clear_alarms.sh
+Location = /afc/bin
+RunDirectory = /afc
+MaximumRunTime = 120
+MaximumStarts = 5
+Lifespan = TRANSIENT
+Exclusivity = EXCLUSIVE
+Group = 2

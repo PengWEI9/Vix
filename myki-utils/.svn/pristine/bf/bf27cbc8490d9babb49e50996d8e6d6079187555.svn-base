@@ -1,0 +1,4 @@
+<PeriodCommit period_id="##period_id" period_open="##period_open" period_close="##period_close">
+<Balance></Balance>
+<Assemblys><AdditionalAssembly assembly_type="##assembly_type" assembly_position="N/A" serial_number="##serial_number"></AdditionalAssembly></Assemblys>
+<Versions>

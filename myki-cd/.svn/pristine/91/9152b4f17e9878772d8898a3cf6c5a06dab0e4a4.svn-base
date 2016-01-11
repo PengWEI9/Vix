@@ -1,0 +1,105 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2014                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : NGBU
+**  Filename        : main.cpp
+**  Author(s)       : An Tran
+**
+**  Description     :
+**      Implements main "C" entry for unit-test harness.
+**
+**  Member(s)       :
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id$
+**      $HeadURL$
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  08.12.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include    <cs.h>
+#include    <TestFramework.h>
+
+#include    "TestCaseProducts.h"
+#include    "TestCaseDeviceParameters.h"
+
+static  std::string     g_iniPath           = "unit-test.ini";
+static  std::string     g_dbPath            = "/afc/data/config/productcfg.db";
+
+static
+int
+runTests( )
+{
+    TestCaseProducts          *pTestCaseProducts          = NULL;
+    TestCaseDeviceParameters  *pTestCaseDeviceParameters  = NULL;
+    TestRunner                *pTestRunner                = NULL;
+    int                        testResult                 = -1;
+
+    try
+    {
+        if ( ( pTestCaseProducts = new TestCaseProducts( "TestCaseProducts", g_dbPath ) ) == NULL )
+        {
+            CsErrx( "runTests : failed instantiating TestCaseProducts object" );
+            throw   __LINE__;
+        }
+
+        if ( ( pTestCaseDeviceParameters = new TestCaseDeviceParameters( "TestCaseDeviceParameters", g_dbPath ) ) == NULL )
+        {
+            CsErrx( "runTests : failed instantiating TestCaseDeviceParameters object" );
+            throw   __LINE__;
+        }
+
+        if ( ( pTestRunner = new TestRunner( ) ) == NULL )
+        {
+            CsErrx( "runTests : failed instantiating TestRunner object" );
+            throw   __LINE__;
+        }
+
+        pTestRunner->addSuite( pTestCaseProducts->suite( ) );
+        pTestRunner->addSuite( pTestCaseDeviceParameters->suite( ) );
+        pTestRunner->begin( g_iniPath );
+        if ( pTestRunner->allTestsPassed( ) == true )
+        {
+            testResult  = 0;
+        }
+    }
+    catch ( int e )
+    {
+        testResult  = -1;
+    }
+
+    if ( pTestRunner               != NULL ) { delete pTestRunner;               }
+    if ( pTestCaseProducts         != NULL ) { delete pTestCaseProducts;         }
+    if ( pTestCaseDeviceParameters != NULL ) { delete pTestCaseDeviceParameters; }
+
+    return  testResult;
+}
+
+int
+main( int argc, char *argv[] )
+{
+    return  runTests( );
+}

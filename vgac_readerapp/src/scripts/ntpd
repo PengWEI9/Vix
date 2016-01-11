@@ -1,0 +1,93 @@
+#!/bin/sh
+#
+# This script is part of the readerapp application and is used
+# to startup the ntpd process on the target device
+#
+PIDDIR=/var/run
+PIDFILE=${PIDDIR}/ntpd.pid
+PROGRAM=/usr/sbin/ntpd
+PROGRAM_ARGS="-r -p time.erggroup.com"
+DESCRIPTION=ntpd
+
+
+# Check if the process is running
+process_running() {
+    if [ -d /proc/`cat ${PIDFILE}` ] ; then
+        if grep "$PROGRAM" /proc/`cat ${PIDFILE}`/cmdline > /dev/null ; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+start () {
+    if [ -x "$PROGRAM" ]
+    then
+        echo "Starting $DESCRIPTION"
+        mkdir -p ${PIDDIR}
+        rm -f ${PIDFILE}
+        TERMINAL_TYPE=`/afc/bin/getini -f /afc/etc/commissioned.ini General:TerminalType`
+        if [ "${TERMINAL_TYPE}" = "TDC" ] || [ "${TERMINAL_TYPE}" = "BDC" ] ; then
+            #
+            #   Primary DC, running NTPD as NTP server
+            #
+            "$PROGRAM" -l -S /afc/bin/ntpd_cb.sh $PROGRAM_ARGS
+        else
+            "$PROGRAM" -S /afc/bin/ntpd_cb.sh $PROGRAM_ARGS
+        fi
+        echo `ps | grep "$PROGRAM" | grep -v grep | cut -c1-5` > ${PIDFILE}
+    fi
+}
+
+stop () {
+    if [ -f ${PIDFILE} ] ; then
+        echo "Stopping $DESCRIPTION"
+
+        process_running
+        if [ "$?" = "0" ] ; then
+            /bin/kill -9 `cat ${PIDFILE}`
+        fi
+
+        rm -f ${PIDFILE}
+    fi
+}
+
+status () {
+    if [ -f ${PIDFILE} ] ; then
+        echo "$DESCRIPTION: pid file exists"
+        process_running
+        if [ "$?" = "0" ] ; then
+            echo "$DESCRIPTION: running"
+        else
+            echo "$DESCRIPTION: not running - pid file orphaned"
+        fi
+    else
+        echo "$DESCRIPTION: not running"
+    fi
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+
+  stop)
+    stop
+    ;;
+
+  status)
+    status
+    ;;
+
+  restart)
+    stop
+    start
+    ;;
+
+  *)
+    echo $"Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?
+

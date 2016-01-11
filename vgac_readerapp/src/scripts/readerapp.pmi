@@ -1,0 +1,18 @@
+# Process Manager information file
+Name = readerapp
+Alias = readerapp
+StartScript = /etc/init.d/init.d/reader start
+StopScript = /etc/init.d/init.d/reader stop
+Location = /afc/bin
+RunDirectory = /afc
+NamedPipe = /tmp/myki-app.pipe
+InitialisationTime = 60
+HealthPollPeriod = 15
+MaximumStarts = 5
+TerminationTime = 30
+Lifespan = PERSISTENT
+Exclusivity = EXCLUSIVE
+ActionOnFailure = RESTART
+RestartPeriod = 1
+Dependency = myki-gui
+Group = 5

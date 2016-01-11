@@ -1,0 +1,4 @@
+*	*	*	*	*	/afc/bin/check_cfengine.sh		>/afc/log/checkcfe.cronout 2>&1 #myki_utils
+0,5,10,15,20,25,30,35,40,45,50,55	*	*	*	*	/afc/bin/update_stats.sh		>/dev/null 2>&1 #myki_utils
+0,15,30,45	*	*	*	*	/afc/bin/transfer_audit.sh		>/dev/null 2>&1 #myki_utils
+

@@ -1,0 +1,126 @@
+#include <string>
+#include <fstream>
+#include "jsonParser.h"
+#include <json/json.h>
+#include <cs.h>
+
+//using namespace std;
+JSONParser::JSONParser(char *JSONFilePath)
+{
+    // parse file , ignoring comments inside the json file
+    std::ifstream receiptsData(JSONFilePath, std::ifstream::binary);
+
+    bool parsingSuccessful = m_jsonTemplate.parse( receiptsData, root, false);
+    if ( !parsingSuccessful )
+    {
+        // report to the user the failure and their locations in the document.
+		CsErrx("JSONParser::JSONParser Failed to parse json file."); 
+    }
+}
+
+JSONParser::~JSONParser()
+{
+
+}
+
+const Json::Value JSONParser::getTitle(const receipt_e &receipt)
+{
+
+    Json::Value receiptTitle;   // will contain the root value after parsing.
+
+    switch(receipt)
+    {
+        case TaxInvoice:
+            receiptTitle = root["Receipts"]["TaxInvoice"]["Title"];			
+            break;
+        case Surcharge:
+            receiptTitle = root["Receipts"]["Surcharge"]["Title"];
+            break;
+        case Reversal:
+            receiptTitle = root["Receipts"]["Reversal"]["Title"];
+            break;
+        case Paper:
+            receiptTitle = root["Receipts"]["Paper"]["Title"];
+            break;
+	case TopUp:
+	    receiptTitle = root["Receipts"]["TopUp"]["Title"];			
+	    break;
+        case DriverShift:
+            receiptTitle = root["Receipts"]["ShiftReport"]["Title"];
+            break;
+        default:
+            CsWarnx("JSONParser::getTitle Unknown type");
+            break;
+    }
+    return receiptTitle;
+}
+
+const Json::Value JSONParser::getHeader(const receipt_e &receipt)
+{
+
+    Json::Value receiptHeader;   // will contains the root value after parsing.
+    
+    switch(receipt)
+    {
+        case DriverShift:
+	    receiptHeader = root["Receipts"]["ShiftReport"]["Header"];
+            break;
+        default:
+            receiptHeader = root["Receipts"]["GeneralHeader"];
+	    break;
+    }
+	return receiptHeader;
+}
+
+const Json::Value JSONParser::getBody(const receipt_e &receipt)
+{
+
+    Json::Value receiptBody;   // will contains the root value after parsing.
+
+    switch(receipt)
+    {
+        case TaxInvoice:
+            receiptBody = root["Receipts"]["TaxInvoice"]["Body"];
+            break;
+        case Surcharge:
+            receiptBody = root["Receipts"]["Surcharge"]["Body"];
+            break;
+        case Reversal:
+            receiptBody = root["Receipts"]["Reversal"]["Body"];
+            break;
+        case Paper:
+            receiptBody = root["Receipts"]["Paper"]["Body"];
+            break;
+	case TopUp:
+	    receiptBody = root["Receipts"]["TopUp"]["Body"];
+	    break;
+	case DriverShift:
+	    receiptBody = root["Receipts"]["ShiftReport"]["Body"];
+	    break;
+        default:
+            CsWarnx("JSONParser::getBody Unknown type");
+            break;
+    }
+
+    return receiptBody;
+}
+
+
+const Json::Value JSONParser::getFooter(const receipt_e &receipt)
+{
+
+    Json::Value receiptFooter;   // will contains the root value after parsing.
+    
+    switch(receipt)
+    {
+        case DriverShift:
+	    receiptFooter = root["Receipts"]["ShiftReport"]["Footer"];
+            break;
+        default:
+            receiptFooter = root["Receipts"]["GeneralFooter"];
+	    break;
+    }
+	return receiptFooter;
+}
+
+

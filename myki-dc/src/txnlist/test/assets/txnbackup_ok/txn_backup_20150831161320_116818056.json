@@ -1,0 +1,34 @@
+[
+{
+    "cartitems" : [
+    {
+        "GSTApplicable" : true,
+        "Price" : 50,
+        "id" : 46,
+        "itemnumber" : 1,
+        "reversed" : false,
+        "short_desc" : "GTS Timetable short",
+        "type" : "ThirdParty"
+    },
+    {
+        "itemnumber" : 2,
+        "GSTApplicable" : false,
+        "Price" : 5000,
+        "id" : 300,
+        "issuer_id" : 1,
+        "long_desc" : "TPurse Load",
+        "short_desc" : "TPurse Load",
+        "subtype" : "None",
+        "type" : "LLSC",
+        "addvaluemedia" : 
+        {
+            "cardnumber" : "0123456789ABCDEF",
+            "txnseqno" : 1234
+        }
+    }
+    ],
+    "saleseqno" : 1,
+    "saletimestamp" : 1441001600,
+    "paymenttype" : "cash"
+}
+]

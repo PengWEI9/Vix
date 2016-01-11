@@ -1,0 +1,11 @@
+[Alarms]
+Confirmed=/afc/data/alarm/confirmed
+Transfer=/afc/data/alarm/transfer
+SwitchImportDir=/afc/data/switch/import/alarm
+Header=/afc/etc/alarm_tmi_header.tmpl
+Footer=/afc/etc/alarm_tmi_footer.tmpl
+OpRecordCountSequence=/afc/etc/opRecordCount.seq
+BatchSequence=/afc/etc/batch.seq
+LogNoSequence=/afc/etc/log_no.seq
+CurrentPeriodId=/afc/etc/currentPeriodId
+%/afc/etc/commissioned.ini

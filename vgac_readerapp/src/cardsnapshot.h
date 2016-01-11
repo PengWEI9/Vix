@@ -1,0 +1,82 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2014                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : NGBU
+**  Filename        : cardsnapshot.h
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @brief      Declares functions to create card snapshots.
+**
+*/
+/*  Member(s)       :
+**      CTemplate               [Public]    Constructor
+**      ~CTemplate              [Public]    Destructor
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**
+**  Subversion      :
+**      $Id: cardsnapshot.h 81796 2015-11-13 01:57:33Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/cardsnapshot.h $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  13.11.15    ANT   Create
+**
+**===========================================================================*/
+
+#if     !defined( __CARDSNAPSHOT_H_INCLUDED )
+#define __CARDSNAPSHOT_H_INCLUDED           1
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <myki_br.h>
+
+/*
+ *      Constants and Macros
+ *      --------------------
+ */
+
+    /*  Card image snapshot generation options */
+#define CARD_SNAPSHOT_PRE_TRANSACTION       0x01        /**< Enable creating card image snapshot prior executing business rule */
+#define CARD_SNAPSHOT_POST_TRANSACTION      0x02        /**< Enable creating card image snapshot after executing business rule */
+
+    /*  Moving card image snapshots modes */
+#define CARD_SNAPSHOT_CONFIRMED             0
+#define CARD_SNAPSHOT_UNCONFIRMED           1
+#define CARD_SNAPSHOT_REMOVE                2
+#define CARD_SNAPSHOT_ERROR                 3
+
+/*
+ *      Prototypes
+ *      ----------
+ */
+
+#ifdef  __cplusplus
+extern  "C" {
+#endif
+
+int     initCardSnapShot( void );
+int     CommitCardSnapshots( int mode );
+//void  SetOneShotCardSnapshot( int bEnable );
+int     StartCardSnapshot( MYKI_BR_ContextData_t *pData, const char *pCsn );
+int     EndCardSnapshot( MYKI_BR_ContextData_t *pData );
+
+#ifdef  __cplusplus
+}
+#endif
+
+#endif  /*  !__CARDSNAPSHOT_H_INCLUDED */

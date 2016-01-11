@@ -1,0 +1,61 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MVU
+**  Filename        : datacurl.cpp
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief  Declares functions to upload data via CURL.
+*/
+/*  Member(s)       :
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: datacurl.h 76650 2015-10-11 08:18:23Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/datacurl.h $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  03.09.15    ANT   Create
+**
+**===========================================================================*/
+
+#if     !defined( __DATACURL_H_INCLUDED )
+#define __DATACURL_H_INCLUDED           1
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <string>
+
+#include "card_processing_thread.h"
+
+/*
+ *      Prototypes
+ *      ----------
+ */
+
+int         initCurl( const char *pAlarmAddress, const char *pPeerAddress, CardProcessingControl_t *pCardProcessingControl );
+void        cleanupCurl( );
+void        uploadAlarmCurl( const char *pPayloadData, long payloadLength );
+void        uploadDataCurl( const char *pPayloadData, long payloadLength );
+std::string getMessageCurl( );
+void        ungetMessageCurl( std::string &msg );
+void        putMessageCurl( std::string &msg );
+void        flushMessageCurl( );
+
+#endif  /*  !__DATACURL_H_INCLUDED */

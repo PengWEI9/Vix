@@ -1,0 +1,105 @@
+#!/bin/sh
+#
+# This script is part of the Reader application and is used
+# to startup the application on the target device (a cobra)
+#
+
+READERAPP_PNAME="readerapp"
+READERAPP_BIN="/afc/bin/readerapp"
+PIDDIR="/afc/var/run"
+READERAPP_PID="${PIDDIR}/${READERAPP_PNAME}.pid"
+
+# Wait for a process to die
+# $1 is process ID
+# $2 is max wait time
+wait_timer ()
+{
+    if [ $# -ne 2 ]; then
+        return
+    fi
+
+    i=0
+    while [ -d "/proc/$1" -a $i -lt $2 ]
+    do
+        sleep 1
+        i=`expr $i + 1`
+    done
+}
+
+start () {
+    echo "Starting reader Process ..."
+
+    if [ -f ${READERAPP_PID} ]; then
+        PID=`cat ${READERAPP_PID}`
+        if [ -d /proc/${PID} ]; then
+            echo "${READERAPP_PNAME} is already running"
+            echo "Stop the current ${READERAPP_PNAME} session first"
+            exit 0
+        else
+            # Remove existing PID file. Probably left over
+            # from some unclean termination
+            rm -rf ${READERAPP_PID}
+        fi
+    fi
+
+   
+
+    LD_LIBRARY_PATH="/lib:/afc/lib:${LD_LIBRARY_PATH}"; \
+    start-stop-daemon --start --quiet --name ${READERAPP_PNAME} --exec ${READERAPP_BIN} --background --nicelevel -14 --make-pidfile --pidfile ${READERAPP_PID} -- 
+}
+
+stop () {
+     echo "Stopping ${READERAPP_PNAME} Process ..."
+    if [ -f ${READERAPP_PID} ]; then
+        PID=`cat ${READERAPP_PID}`
+        start-stop-daemon --stop --quiet --name ${READERAPP_PNAME} --pidfile ${READERAPP_PID}
+
+        # Wait for the application to exit.
+        # Don't wait for too long, as the application may be hung up somewhere
+        wait_timer ${PID} 10
+
+        rm -rf ${READERAPP_PID}
+    fi
+
+    # On the safe side, kill the application again
+    /usr/bin/killall -q -9 ${READERAPP_PNAME}
+}
+
+status () {
+    if [ -f ${READERAPP_PID} ]; then
+        PID=`cat ${READERAPP_PID}`
+        if [ -d /proc/${PID} ]; then
+            echo "${READERAPP_PNAME} is running. PID file ${READERAPP_PID}. PID=${PID}"
+        else
+            echo "${READERAPP_PNAME} is not running"
+        fi
+    else
+        echo "${READERAPP_PNAME} is not running"
+    fi
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+
+  stop)
+    stop
+    ;;
+
+  status)
+    status
+    ;;
+
+  restart)
+    stop
+    start
+    ;;
+
+  *)
+    echo $"Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?
+

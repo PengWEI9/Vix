@@ -1,0 +1,170 @@
+#include <cs.h>
+#include <csf.h>
+#include <cstdlib>
+#include <cstring>
+#include <errno.h>
+#include <ipc.h>
+#include <message_base.h>
+#include "MykiPrinter.h"
+#include "cli.h"
+#include <csfcmd.h>
+
+#define INI_PATH            "Config:File"
+#define INIDEF_PATH         "/afc/etc/dcprinter.ini"
+
+static const CsfSysOption_t defaultSys[] = {
+/* 'ini' path */
+    /* ic_name                          ic_value                           ic_flags */
+    {   INI_PATH,                       INIDEF_PATH,                        0           },
+/* Command shell */
+    {   "Command:" CSFCMD_INIPIPE,      "/tmp/bdcprinter.pipe",             0           },
+    {   "Command:" CSFCMD_INIMODE,      "0660",                             0           },
+    {   "Command:" CSFCMD_INIUSERS,     "6",                                0           },
+    {   "Command:" CSFCMD_INIIDLE,      "900",                              0           },
+    {   "Command:" CSFCMD_INITHRMIN,    "4",                                0           },
+    {   "Command:" CSFCMD_INITHRMAX,    "6",                                0           },
+    {   "Command:" CSFCMD_INITHRDOWSY,  "60",                               0           },
+
+
+};
+
+#define NDEFOPTIONS         (int)(sizeof(defaultSys) / sizeof(defaultSys[0]))
+
+struct serial_params_t {
+    char    port[128];
+    char    options[128];
+    int     speed;
+    int     stop;
+} serial_params;
+
+int 		printerQueueId = -1;       // Incoming queue; also posted to by our serial receive thread
+int 		appQueueId = -1;           // Send to 'app' messages like IPS_CSC_ENABLE
+
+static char g_jsonPath[128] = { '\0' };
+
+bool loadIni()
+{
+    char    buffer[128];
+    
+	CsfIniExpand("Serial:Speed", buffer, sizeof buffer);
+    
+	serial_params.speed = atoi(buffer);
+    
+	CsfIniExpand("Serial:Device", serial_params.port, sizeof serial_params.port);
+    CsfIniExpand("Serial:IOCTL", serial_params.options, sizeof serial_params.options);
+    
+	if ( serial_params.speed && strlen(serial_params.port) == 0)
+    {
+        CsErrx("loadIni:: Unable to load Serial: parameters in ini file");
+        return false;
+    }
+
+    CsfIniExpand("Serial:StopBits", buffer, sizeof buffer);
+    serial_params.stop = atoi(buffer);
+
+    CsfIniExpand("JSON:Path", g_jsonPath, sizeof g_jsonPath);
+
+    return true; 
+}
+
+// TODO: Interpret raw data coming from printer to send status back to myki dc
+int ProcessIncomingData(IPC_Generic_t *p)
+{
+    //Stub function to process incoming data from printer.
+     
+    return 0;  
+}
+
+int main(int argc, char *argv[])
+{
+	int iRecResult = 0;
+	int initResult = 0;
+	char msgBuf[1000];                             // IPC message data space 
+
+    CsfIniInit(NDEFOPTIONS, defaultSys);
+    CsfIniOpen(INIDEF_PATH, NULL);                  // get all the Command INI sections
+
+    // Initialise environment     
+    if( HandleCommandLine(argc, argv) != 0 )
+        return 10;
+
+    if( !loadIni() )
+    {
+        CsErrx("main:: Unable to load ini file");
+        return -1;                                 // Fail
+    }
+
+    // Initialize IPC communication [message queue]    
+    if ( ( initResult = IpcInit() ) != 0 )
+    {
+        CsErrx("main:: IpcInit FAILED result %d", initResult);
+        return -1;
+    }
+    std::cout << "Speed = " << serial_params.speed << std::endl;	
+    MykiPrinter mykiPrinter(g_jsonPath, 
+	                        DC_PRINTER_RECEIVE_TASK, 
+                            IPC_PRINTER_SERIAL_RX_CHARACTER_AVAILABLE, 
+                            serial_params.port, 
+                            serial_params.speed , 
+							8, 
+							'n', 
+                            serial_params.stop);
+
+    // Incoming queue; also posted to by our serial receive thread
+    printerQueueId = IpcGetID(DC_PRINTER_TASK);
+	
+    // Set the queue in the serial to send to our printer
+    mykiPrinter.setQueueId(printerQueueId);
+	
+    // Sending status to dc
+    appQueueId   = IpcGetID(DC_TASK); 
+    atexit((void (*)())IpcClose);
+
+    // Create another thread to listen for any incoming data from the serial port
+    mykiPrinter.start();
+
+    // End init
+
+    while(1) 
+    {
+        IPC_NoPayload_t *recvMsg;
+        size_t  byteRead = 0;        
+		
+        if( ( iRecResult = IpcReceive(printerQueueId, msgBuf, sizeof msgBuf, &byteRead) ) == 0 )  // Wait for response message       
+        {
+			recvMsg = (IPC_NoPayload_t *)msgBuf;
+			
+            switch(recvMsg->hdr.type)
+            {		
+                case IPC_PRINTER_SERIAL_RX_CHARACTER_AVAILABLE:
+				    CsDebug(3, (3, "main:: SERIAL_RX_CHARACTER_AVAILABLE"));				    
+                    ProcessIncomingData( ( IPC_Generic_t *)recvMsg );
+                    break;
+
+                case IPC_PRINTER_TPURSELOAD:
+				    CsDebug(3, (3, "main:: IPC_PRINTER_TPURSELOAD received:"));
+                    mykiPrinter.printTopUp( (IPC_Printer_TpurseLoad_t *)recvMsg );
+                    break;
+				
+				case IPC_PRINTER_TPURSELOAD_REV:
+				    CsDebug(3, (3, "main:: IPC_PRINTER_TPURSELOAD_REV received:"));
+                    mykiPrinter.printTopUpReversal( (IPC_Reversal_TpurseLoad_t *)recvMsg );
+				    break;
+				
+                default:
+                    CsErrx("main:: unexpected message 0x%04x", recvMsg->hdr.type);
+                    break;
+            }
+        }
+		else
+	    {
+			if (iRecResult == E2BIG)
+                CsErrx("main:: Buffer is too small expected %d got %d", sizeof msgBuf, byteRead);
+            else
+                CsErrx("main:: Could not process message, result %d", iRecResult);
+		}
+	        
+    }
+    return 0;
+}
+

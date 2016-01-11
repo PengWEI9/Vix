@@ -1,0 +1,7 @@
+#!/bin/sh
+
+INI=readerapp.ini
+AFCHOME=${AFC:=/afc}
+INIPATH=$AFCHOME/etc/$INI
+
+exit 0

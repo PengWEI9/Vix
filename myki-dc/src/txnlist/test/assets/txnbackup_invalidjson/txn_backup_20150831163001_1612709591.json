@@ -1,0 +1,51 @@
+[
+   {
+      "cartitems" : [
+         {
+            "amount" : 3,
+            "cardnumber" : "123456789"
+            "itemnumber" : 1
+            "paymenttype" : "cash",
+            "reversed" : false,
+            "txnseqno" : 4,
+            "txntype" : "tpurseload"
+         },
+         
+            "amount" : 3,
+            "cardnumber" : "12345678",
+            "itemnumber" : 2,
+            "paymenttype" : "cash",
+            "reversed" : false,
+            "txnseqno" : 4,
+            txntype" : "tpurseload"
+         },
+         {
+            "amount" : 3,
+            "cardnumber" : "1234567",
+            "itemnumber" : 3,
+            "paymenttype" : "cash",
+            "reversed" : false,
+            "txnseqno" : 4,
+            "txntype" : "tpurseload"
+         }
+      ],
+      "saleseqno" : 1,
+      "saletimestamp" : 1441002600
+   },
+   {
+      "cartitems" : [
+         {
+            "GSTApplicable" : true,
+            "Price" : 50,
+            "id" : 46,
+            "itemnumber" : 1,
+            "paymenttype" : "cash",
+            "reversed" : false,
+            "short_desc" : "GTS Timetable short",
+            "type" : "ThirdParty"
+         }
+      ],
+      "saleseqno" : 2,
+      "saletimestamp" : 1441002601
+   }
+]

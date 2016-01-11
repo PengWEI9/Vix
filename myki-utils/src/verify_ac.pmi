@@ -1,0 +1,11 @@
+# Process Manager information file
+Name = verify_ac
+Alias = verify_ac
+StartScript =  (test -f /afc/etc/commissioned.ini && test -f /afc/etc/alarm.ini && /afc/bin/verify_ac.sh) || true
+Location = /afc/bin
+RunDirectory = /afc
+MaximumRunTime = 120
+MaximumStarts = 5
+Lifespan = TRANSIENT
+Exclusivity = EXCLUSIVE
+Group = 3

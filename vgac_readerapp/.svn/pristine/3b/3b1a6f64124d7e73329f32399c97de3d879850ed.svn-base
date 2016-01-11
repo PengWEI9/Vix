@@ -1,0 +1,113 @@
+#
+#
+[MykiApp General]
+GacAddress=http://192.168.136.66/api/api-docs.json/REST/GACReader
+AlarmAddress=http://192.168.136.66/api/api-docs.json/REST/GACReader
+CardFile=/tmp/card.data
+ECUPresent=N
+CardRemovalDelay=2500
+CalculatePassExpiry=N
+DumpCardImage=N
+EntryPointId=15000
+LineId=2
+StopId=3
+AcquirerId=1
+ServiceProviderId=1000
+ProductAutoloadEnabled=1
+PurseAutoloadEnabled=1
+IsEntry=0
+IsExit=0
+PassExpiryString=myki pass expires:
+CDDatabase=/afc/data/config/productcfg.db
+ActionlistDatabase=/afc/data/config/actionlist.db
+ActionlistDatabase=/afc/data/config/actionlist.db
+DeltaActionlistDatabase=/afc/data/config/actionlist_delta.db
+UserIdFile=/afc/etc/userid
+
+#   Number of consecutive card read failures before a warning alarm is generated (0=Disabled)
+CardRdFailWarn=5
+
+#   Number of consecutive card read failures before a major alarm is generated (0=Disabled)
+CardRdFailError=10
+
+#   Number of consecutive card write failures before a warning alarm is generated (0=Disabled)
+CardWrFailWarn=5
+
+#   Number of consecutive card write failures before a major alarm is generated (0=Disabled)
+CardWrFailError=10
+
+#   Number of consecutive failures generating LDT XML before a warning alarm is generated (0=Disabled)
+SaveTxnDataFailWarn=1
+
+#   Number of consecutive failures generating LDT XML before a major alarm is generated (0=Disabled)
+SaveTxnDataFailError=2
+
+#   Number of hours failing to synchronise time before generating a warning alarm (0=Disabled)
+NoTimeSyncWarn=24
+
+#   Number of hours failing to synchronise time before generating a major alarm (0=Disabled)
+NoTimeSyncError=168
+
+#   Number of seconds interval checking for time synchronisation (0=Disabled)
+NoTimeSyncCheck=30
+
+#   Creating pre/post-transaction card image snapshot option (0=Disabled, 1=Pre-transaction, 2=Post-transaction, 3=Pre- and Post-transaction)
+CardSnapshotTxnOption=0
+
+#   Creating card image snapshots as per BR_LLSC_0_1 (N=Disabled, Y=Enabled)
+CardSnapshotBREnabled=Y
+
+#   Pending/Working card image snapshot folder (note: must end with '/')
+CardSnapshotPending=/afc/data/images/pending/
+
+#   Confirmed card image snapshot folder (note: must end with '/')
+CardSnapshotConfirmed=/afc/data/images/confirmed/
+
+#   Timeout (seconds) waiting for location update from TDC (0=Disabled)
+LocationUpdateTimeout=0
+#   Power management - Low power warning - raise alarm and disable reader. 
+PmcVoltageLow=9500
+#   Power management - Normal power warning clear alarm and reenable reader.  This level must be met before voltage monitor is primed.
+PmcVoltageNormal=10500
+#   Power management - Level to set backlight to when low power is active
+PmcBacklightLevel=30
+
+[MykiApp Debug]
+DebugEnabled=Y
+Debug=1
+Warning=Y
+Verbose=Y
+Console=N
+LocalLogFile=/afc/log/readerapp
+LocalLogMB=1
+LocalLogCount=3
+
+[MykiApp Command]
+Pipe=/tmp/myki-app.pipe
+Users=5
+Idle=6
+ThrMin=3
+ThrMax=5
+ThrDowsy=60
+
+[TPE]
+#   Period in hours that define a next working day gap between the Drivers logging on to the same shift number twice in a row
+NumberOfHoursBetweenShifts=8
+
+#   Time between logoff and consecutive login
+MaxShiftDownTime=1
+
+#  Default Driver Shift ID for Headless mode
+HeadlessShiftID=9999
+
+
+[LDT]
+TmiCounterBackupDir=/afc/data/tmi/counters
+TmiBBRAMPartition=tmi_counters
+TmiConfirmed=/afc/data/tmi/confirmed
+CounterManifest=/afc/data/config/counter_manifest.json
+
+# read in the per location (commissioning) data
+# [overrides default values]
+#
+%/afc/etc/commissioned.ini

@@ -1,0 +1,219 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MVU
+**  Filename        : dataxfer.cpp
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief  Defines functions to transfer data.
+*/
+/*  Member(s)       :
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: dataxfer.cpp 85994 2015-12-09 06:17:29Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/dataxfer.cpp $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  07.09.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <string>
+
+#include <json/json.h>
+
+#include <cs.h>
+
+#include "app_debug_levels.h"
+#include "card_processing_thread.h"
+#include "datacurl.h"                   /*  CURL */
+#include "dataws.h"                     /*  WebSocket */
+#include "dataxfer.h"
+
+/*
+ *      Local Variables
+ *      ---------------
+ */
+
+static  bool        s_alarmUseCurl  = true;
+static  bool        s_useCurl       = true;
+
+    /**
+     *  Initialises data transfer communication layer.
+     *  @param  pAlarmAddress alarm destination address.
+     *  @param  pPeerAddress peer address.
+     *  @param  pCardProcessingControl card processing control block.
+     *  @return 0 if successful; otherwise errno.
+     *  @return 0 if successful; otherwise failed.
+     */
+int
+initDataTransfer( const char *pAlarmAddress, const char *pPeerAddress, CardProcessingControl_t *pCardProcessingControl )
+{
+    if ( pAlarmAddress[ 0 ] == 'w' && pAlarmAddress[ 1 ] == 's' )
+    {
+        s_alarmUseCurl  = false;    // Address starts with ws (WebSocket) or wss (Secured WebSocket)
+    }
+    CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "initDataTransfer : AlarmAddress %s, alarm transfer via %s",
+            pAlarmAddress, s_alarmUseCurl == true ? "CURL" : "WebSocket" ) );
+
+    if ( pPeerAddress[ 0 ] == 'w' && pPeerAddress[ 1 ] == 's' )
+    {
+        s_useCurl       = false;    // Address starts with ws (WebSocket) or wss (Secured WebSocket)
+    }
+    CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "initDataTransfer : GacAddress %s, peer data transfer via %s",
+            pPeerAddress, s_useCurl == true ? "CURL" : "WebSocket" ) );
+
+    /*  TODO:   Currently, alarms are always transferred via CURL */
+    (void)initCurl( pAlarmAddress, pPeerAddress, pCardProcessingControl );
+
+    if ( s_useCurl == false )
+    {
+        /*  Initialises WebSocket data transfer layer */
+        return initWebsocket( pAlarmAddress, pPeerAddress, pCardProcessingControl );
+    }
+
+    return 0;
+}
+
+    /**
+     *  Sends alarm payload.
+     *  @param  pPayloadData payload buffer address.
+     *  @param  payloadLength payload buffer size.
+     */
+void
+uploadAlarm( const char *pPayloadData, long payloadLength )
+{
+    if ( s_alarmUseCurl )
+    {
+        //  Warning this blocks ipc monitor for up to 2 seconds, consider
+        //  moving to another thread.
+        uploadAlarmCurl( pPayloadData, payloadLength );
+    }
+    else
+    {
+        uploadAlarmWebsocket( pPayloadData, payloadLength );
+    }
+}
+
+    /**
+     *  Sends data payload.
+     *  @param  pPayloadData payload buffer address.
+     *  @param  payloadLength payload buffer size.
+     */
+void
+uploadData( const char *pPayloadData, long payloadLength )
+{
+    if ( s_useCurl )
+    {
+        uploadDataCurl( pPayloadData, payloadLength );
+    }
+    else
+    {
+        uploadDataWebsocket( pPayloadData, payloadLength );
+    }
+}
+
+    /**
+     *  Gets received message from CURL or WebSocket.
+     *  @return Received JSON formatted message.
+     */
+std::string
+getMessage( )
+{
+    if ( s_useCurl )
+    {
+        return getMessageCurl( );
+    }
+    else
+    {
+        return  getMessageWebsocket( );
+    }
+}
+
+    /**
+     *  Ungets message via CURL or WebSocket.
+     */
+void
+ungetMessage( std::string &msg )
+{
+    if ( s_useCurl )
+    {
+        ungetMessageCurl( msg );
+    }
+    else
+    {
+        ungetMessageWebsocket( msg );
+    }
+}
+
+    /**
+     *  Puts message via CURL or WebSocket.
+     */
+void
+putMessage( std::string &msg )
+{
+    if ( s_useCurl )
+    {
+        putMessageCurl( msg );
+    }
+    else
+    {
+        putMessageWebsocket( msg );
+    }
+}
+
+    /**
+     *  Flushes CURL or WebSocket receive message queue.
+     */
+void
+flushMessage( )
+{
+    if ( s_useCurl )
+    {
+        flushMessageCurl( );
+    }
+    else
+    {
+        flushMessageWebsocket( );
+    }
+}
+
+    /**
+     *  Cleans up CURL or WebSocket data transfer.
+     */
+void
+cleanupDataTransfer( )
+{
+    if ( s_useCurl )
+    {
+        cleanupCurl( );
+    }
+    else
+    {
+        cleanupWebsocket( );
+    }
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+TPE_INI=/afc/etc/tpe.ini
+TPE_DEFAULT_INI=/afc/etc/tpe_default.ini
+
+if [ ! -f ${TPE_INI} ] ; then
+
+    echo "postinst : copy default TPE"
+    cp -f ${TPE_DEFAULT_INI} ${TPE_INI}
+
+fi
+
+exit 0

@@ -1,0 +1,128 @@
+#!/bin/sh
+#
+# Start/Stop the TDC services
+#
+PIDDIR="/afc/var/run"
+###################################
+DC_PNAME="dc"
+DC_BIN="/afc/bin/dc"
+DC_INI="/afc/etc/dc.ini"
+DC_OPTION="-i ${DC_INI}"
+
+DC_PID="${PIDDIR}/${DC_PNAME}.pid"
+
+
+# Wait for a process to die
+# $1 is process ID
+# $2 is max wait time
+wait_timer ()
+{
+    if [ $# -ne 2 ]; then
+        return
+    fi
+
+    i=0
+    while [ -d "/proc/$1" -a $i -lt $2 ]
+    do
+        sleep 1
+        i=`expr $i + 1`
+    done
+}
+
+start ()
+{
+    echo "Starting DC Process ..."
+
+    if [ -f ${DC_PID} ]; then
+        PID=`cat ${DC_PID}`
+        if [ -d /proc/${PID} ]; then
+            echo "${DC_PNAME} is already running"
+            echo "Stop the current ${DC_PNAME} session first"
+            exit 0
+        else
+            # Remove existing PID file. Probably left over
+            # from some unclean termination
+            rm -rf ${DC_PID}
+        fi
+    fi
+
+    LD_LIBRARY_PATH="/lib:/afc/lib:${LD_LIBRARY_PATH}"; \
+    start-stop-daemon --quiet --start --name ${DC_PNAME} --exec ${DC_BIN} --background --make-pidfile --pidfile ${DC_PID} -- ${DC_OPTION}
+    
+}
+
+stop ()
+{
+  
+        
+    echo "Stopping TDC Process ..."
+    if [ -f ${DC_PID} ]; then
+        PID=`cat ${DC_PID}`
+        start-stop-daemon --stop --quiet --name ${DC_PNAME} --pidfile ${DC_PID}
+
+        # Wait for the application to exit.
+        # Don't wait for too long, as the application may be hung up somewhere
+        wait_timer ${PID} 10
+
+        rm -rf ${DC_PID}
+    fi
+
+    # On the safe side, kill the application again
+    
+    /usr/bin/killall -q -9 ${DC_PNAME}
+}
+
+status ()
+{
+    if [ -f ${DC_PID} ]; then
+        PID=`cat ${DC_PID}`
+        if [ -d /proc/${PID} ]; then
+            echo "${DC_PNAME} is running. PID file ${DC_PID}. PID=${PID}"
+        else
+            echo "${DC_PNAME} is not running"
+        fi
+    else
+        echo "${DC_PNAME} is not running"
+    fi
+}
+
+# Environment check
+
+
+if [ ! -x ${DC_BIN} ]; then
+    echo "${DC_BIN} is not found or not executable"
+    exit 1
+fi
+
+if [ ! -d ${PIDDIR} ]; then
+    echo "${PIDDIR} does not exist"
+    exit 1
+fi
+
+
+case "$1" in
+  start)
+    start
+    ;;
+
+  stop)
+    stop
+    ;;
+
+  restart)
+    stop
+    start
+    ;;
+
+  status)
+    status
+    ;;
+
+  *)
+    echo $"Usage: $0 {start|stop|restart|status}"
+    exit 1
+esac
+
+exit $?
+
+

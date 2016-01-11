@@ -1,0 +1,20 @@
+/** @mainpage Myki DC Transaction List API
+
+<h1>Overview</h1>
+
+This is a sub-module of the myki-dc package. It's used to store transaction
+data in a persistent format. This allows transactions to be reversed in the 
+future.
+
+<h2>How is the data stored?</h2>
+
+Every time a transaction occurs, the data is written to a backup file in JSON
+format. The TxnList::TxnBackupManager class manages these backup files, and uses
+CRC checking to validate them.
+
+<h2>How long are transactions stored for?</h2>
+
+They are stored for a configurable amount of time, defined in Myki CD as
+"reversalPeriod".
+
+*/

@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+AFC_HOME=${AFC_HOME:=/afc}
+BACKUP_SUFFIX=vixsave                   #   Backup file suffix
+DC_PMI=${AFC_HOME}/procmgr/dc.pmi
+DC_PMI_OFF=${DC_PMI}.${BACKUP_SUFFIX}
+
+if [ -f ${DC_PMI_OFF} ] ; then
+
+    #   Disables DC process
+    #
+    echo "PostInst: Disable DC process"
+    mv -f ${DC_PMI} ${DC_PMI_OFF}
+
+fi
+
+PATH=/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+remove_crons ()
+{
+        CRONTMP=/tmp/xxncron.$$
+        /usr/bin/crontab -l | sed -e "/#myki_dc/d" > $CRONTMP
+        /usr/bin/crontab -r
+        /usr/bin/crontab $CRONTMP
+        rm $CRONTMP
+}
+
+install_crons ()
+{
+        set -vx
+        # initialise the crontab entries
+        #
+        CRONTMP=/tmp/xxncron.$$
+        # avoid duplicating the cron jobs
+        /usr/bin/crontab -l |sed -e "/#myki_dc/d"> $CRONTMP
+        cat /afc/etc/dc.crontab >> $CRONTMP
+        /usr/bin/crontab $CRONTMP
+#       rm $CRONTMP
+        echo "root crontab updated"
+}
+#set -vx
+
+case "$1" in
+        configure)
+                install_crons
+                ;;
+    abort-upgrade|abort-deconfigure|abort-remove)
+                remove_crons
+        ;;
+
+    "")
+        # Busybox dpkg (Day0 upgrade)
+        echo "$0 called with no arguments " 1>&2
+        install_crons
+        exit 0
+        ;;
+    *)
+        echo "$0 called with unknown argument \`$1'" 1>&2
+        exit 1
+        ;;
+esac
+
+
+exit 0

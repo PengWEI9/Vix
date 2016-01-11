@@ -1,0 +1,27 @@
+[
+    {
+        "profile": 1,
+        "technician": 1,
+        "type": 11
+    },
+    {
+        "profile": 2,
+        "technician": 1,
+        "type": 11
+    },
+    {
+        "attendant": 1,
+        "profile": 1,
+        "type": 15
+    },
+    {
+        "attendant": 1,
+        "profile": 1,
+        "type": 30
+    },
+    {
+        "profile": 2,
+        "technician": 1,
+        "type": 30
+    }
+]

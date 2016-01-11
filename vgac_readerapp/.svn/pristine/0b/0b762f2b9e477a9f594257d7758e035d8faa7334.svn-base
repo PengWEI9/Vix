@@ -1,0 +1,65 @@
+#
+#
+[MykiApp General]
+ECUPresent=Y
+ECUKeepAliveTimeout=60
+CardRemovalDelay=2500
+DumpCardImage=N
+EntryPointId=0
+LineId=2
+StopId=3
+AcquirerId=1
+ServiceProviderId=1000
+ProductAutoloadEnabled=1
+PurseAutoloadEnabled=1
+IsEntry=0
+IsExit=0
+PassExpiryString=myki pass expires:
+CDDatabase=/afc/data/config/productcfg.db
+ActionlistDatabase=/afc/data/config/actionlist.db
+RolesJson=/afc/data/config/roles.json
+ServiceProvidersJson=/afc/data/config/serviceproviders.json
+AcsCompatibilityMode=Y
+#GUIPresent=N
+#ToggleEntryExit=Y
+
+#   Number of consecutive card read failures before a warning alarm is generated (0=Disabled)
+CardRdFailWarn=5
+
+#   Number of consecutive card read failures before a major alarm is generated (0=Disabled)
+CardRdFailError=10
+
+#   Number of consecutive card write failures before a warning alarm is generated (0=Disabled)
+CardWrFailWarn=5
+
+#   Number of consecutive card write failures before a major alarm is generated (0=Disabled)
+CardWrFailError=10
+
+#   Number of consecutive failures generating LDT XML before a warning alarm is generated (0=Disabled)
+SaveTxnDataFailWarn=1
+
+#   Number of consecutive failures generating LDT XML before a major alarm is generated (0=Disabled)
+SaveTxnDataFailError=2
+
+[MykiApp Debug]
+DebugEnabled=Y
+Debug=1
+Warning=Y
+Verbose=N
+Console=N
+LocalLogFile=/afc/log/readerapp
+LocalLogMB=1
+LocalLogCount=3
+
+[MykiApp Command]
+Pipe=/tmp/myki-app.pipe
+Users=5
+Idle=6
+ThrMin=3
+ThrMax=5
+ThrDowsy=60
+
+# read in the per location (commissioning) data
+# [overrides default values]
+#
+%/afc/etc/commissioned.ini

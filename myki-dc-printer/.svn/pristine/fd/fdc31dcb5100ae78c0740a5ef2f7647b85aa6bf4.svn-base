@@ -1,0 +1,18 @@
+# Process Manager information file
+Name = dcprinter
+Alias = dcprinter
+StartScript = service dcprinter start
+StopScript = service dcprinter stop
+Location = /afc/bin
+RunDirectory = /afc
+NamedPipe = /tmp/bdcprinter.pipe
+InitialisationTime = 60
+HealthPollPeriod = 15
+MaximumStarts = 5
+TerminationTime = 30
+Lifespan = PERSISTENT
+Exclusivity = EXCLUSIVE
+ActionOnFailure = RESTART
+RestartPeriod = 1
+Group = 7
+

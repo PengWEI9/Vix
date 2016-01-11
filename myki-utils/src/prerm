@@ -1,0 +1,29 @@
+#!/bin/sh
+
+
+# some defaults.
+PATH=/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+remove_crons ()
+{
+	CRONTMP=/tmp/xxncron.$$
+	/usr/bin/crontab -l | sed -e "/#myki_utils/d" > $CRONTMP
+	/usr/bin/crontab -r
+	/usr/bin/crontab $CRONTMP
+	rm $CRONTMP
+}
+
+
+case "$1" in
+	remove)
+		# lets clean any crontab entries
+		#
+		remove_crons
+		;;
+	*)
+# do nothing
+		;;
+esac
+
+# EOF, done.
+

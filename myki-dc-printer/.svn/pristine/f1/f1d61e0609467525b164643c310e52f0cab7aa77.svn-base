@@ -1,0 +1,56 @@
+# Copyright (C) 2009-2010 Vix Products Pty Ltd, All Rights Reserved
+#
+# This it the main build file for the qt_tutorial_vdk demonstration
+# application that shows how to build QT applications using the iVal
+# development kit.
+
+# These entries are required by the build system and must not be changed.
+$MAKELIB_PL     = "$ENV{ GBE_TOOLS }/makelib.pl";
+$BUILDLIB_PL    = "$ENV{ GBE_TOOLS }/buildlib.pl";
+require         "$BUILDLIB_PL";
+require         "$MAKELIB_PL";
+
+# The platform on which this application builds - PPC_603E is used for the
+# iVal product range as it is the PowerPC core type on the Viper processor
+# card.
+#
+# The --OnlyProd option specifies that only production binaries are built,
+# instead of both production and debug binaries.
+
+BuildPlatforms( 'PPC_603E' , 'UBUNTU12'); #UBUNTU12 build requires daf libraries to be built first
+
+# The name of this package along with its version number.  Version numbers
+# must be of the form x.y.zzzz cr.
+BuildName( 'myki-dc-printer 0.0.12000 mbu' );
+
+
+BuildSnapshot();
+BuildAccessPerms();
+BuildInterface( 'local' );
+BuildInterface( 'interface' );
+
+
+# Specifies the set of packages that this application depends on for its
+# build.
+
+# TODO remove
+BuildPkgArchive ( 'jsoncpp', '0.1.1000.cots' );
+LinkPkgArchive ( 'epson-printer-manager' , '1.0.0002.mbu');
+LinkPkgArchive ( 'basetypes', '25.5.7006.cr' );
+LinkPkgArchive ( 'cs', '26.2.12000.cr' );
+LinkPkgArchive ( 'reader-common' , '1.4.3000.mbu' );
+LinkPkgArchive ( 'dc-messages' , '1.2.15000.mbu' );
+LinkPkgArchive ( 'debian_dpkg', '1.13.25.1000.cots' );
+LinkPkgArchive ( 'debian_packager', '1.20.0000.cr' );
+LinkPkgArchive ( 'linux_drivers_serpent-api', '3.4.1000.cr' );
+
+
+# This is the list of subdirectories to search for 'makefile.pl' build 
+# instruction files.
+BuildSubDir( 'src' );
+
+BuildDescpkg();
+BuildVersion();
+
+BuildMake();
+# Copyright (C) 2009-2010 Vix Products Pty Ltd, All Rights Reserved

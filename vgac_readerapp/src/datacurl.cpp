@@ -1,0 +1,284 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MVU
+**  Filename        : datacurl.cpp
+**  Author(s)       : ?
+**
+**  Description     :
+*/
+/**     @file
+**      @brief  Defines functions to transfer data via CURL.
+*/
+/*  Member(s)       :
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: datacurl.cpp 85994 2015-12-09 06:17:29Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/datacurl.cpp $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  03.09.15    ANT   Create
+**
+**===========================================================================*/
+
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <string>
+
+#include <json/json.h>
+
+#include <curl/curl.h>
+#include <cs.h>
+
+#include "app_debug_levels.h"
+#include "card_processing_thread.h"
+#include "datacurl.h"
+
+/*
+ *      Local Constants and Macros
+ *      --------------------------
+ */
+
+/*
+ *      Local Prototypes
+ *      ----------------
+ */
+
+static  size_t      curlOutput( void *ptr, size_t size, size_t nmemb, void *stream );
+
+/*
+ *      Local Variables
+ *      ---------------
+ */
+
+static  const char *s_gacAddress    = NULL;
+static  const char *s_alarmAddress  = NULL;
+static  CURL       *s_uploadHandle  = NULL;
+static  CURL       *s_alarmHandle   = NULL;
+
+/*
+ *      Global Variables
+ *      ----------------
+ */
+
+    /**
+     *  Initialises CURL data transfer mechanism.
+     *  @param  pAlarmAddress CURL alarm destination address.
+     *  @param  pPeerAddress CURL peer address.
+     *  @param  pCardProcessingControl card processing control block.
+     *  @return 0 if successful; otherwise errno.
+     */
+int
+initCurl( const char *pAlarmAddress, const char *pPeerAddress, CardProcessingControl_t *pCardProcessingControl )
+{
+    (void)pCardProcessingControl;
+
+    s_gacAddress    = pPeerAddress;
+    s_alarmAddress  = pAlarmAddress;
+
+    return 0;
+}
+
+    /**
+     *  Performs CURL clean-up.
+     */
+void
+cleanupCurl( )
+{
+    #if     !defined( HOST_I386 /* UBUNTU12 */ )
+    if ( s_alarmHandle != NULL )
+    {
+        curl_easy_cleanup( s_alarmHandle );
+        s_alarmHandle   = NULL;
+    }
+    if ( s_uploadHandle != NULL )
+    {
+        curl_easy_cleanup( s_uploadHandle );
+        s_uploadHandle  = NULL;
+    }
+    #endif
+}
+
+    /**
+     *  Sends alarm payload via CURL to the GAC.
+     *  @param  pPayloadData payload buffer address.
+     *  @param  payloadLength payload buffer size.
+     */
+void
+uploadAlarmCurl( const char *pPayloadData, long payloadLength )
+{
+    #if     !defined( HOST_I386 /* UBUNTU12 */ )
+    if ( s_alarmHandle == NULL )
+    {
+        s_alarmHandle   = curl_easy_init();
+        CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadAlarm : init curl %s", s_alarmHandle == NULL ? "fail" : "OK" ) );
+    }
+
+    if ( s_alarmHandle != NULL && s_alarmAddress != NULL && payloadLength > 0 && pPayloadData != NULL )
+    {
+        CURLcode            res;
+        struct curl_slist  *chunk           = NULL;
+
+        CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadAlarm : upload %d bytes", payloadLength ) );
+        curl_easy_setopt( s_alarmHandle, CURLOPT_URL, s_alarmAddress );
+        curl_easy_setopt( s_alarmHandle, CURLOPT_WRITEFUNCTION, curlOutput );   // Otherwise it gets sent to stdout
+        curl_easy_setopt( s_alarmHandle, CURLOPT_POST, 1 );
+        curl_easy_setopt( s_alarmHandle, CURLOPT_CONNECTTIMEOUT_MS, 1600 );
+        curl_easy_setopt( s_alarmHandle, CURLOPT_TIMEOUT_MS, 3000 );
+        curl_easy_setopt( s_alarmHandle, CURLOPT_POSTFIELDSIZE, (long)payloadLength );
+
+        chunk   = curl_slist_append( chunk, "Expect:" );
+        res     = curl_easy_setopt( s_alarmHandle, CURLOPT_HTTPHEADER, chunk );
+
+        curl_easy_setopt( s_alarmHandle, CURLOPT_POSTFIELDS, pPayloadData );
+
+        // Perform Request with Specified Options
+        if ( ( res = curl_easy_perform( s_alarmHandle ) ) != 0 )
+        {
+            CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadAlarm : send to %s failed %d - %s",
+                    s_alarmAddress, res, curl_easy_strerror( res ) ) );
+        }
+        else
+        {
+            long            httpResponseCode    = 0;
+
+            curl_easy_getinfo( s_alarmHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode );
+            CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadAlarm : send success response %d", httpResponseCode ) );
+        }
+    }
+    else
+    #endif
+    {
+        CsErrx( "uploadAlarm : cannot upload %d bytes%s", payloadLength, pPayloadData == NULL ? " DATA IS NULL" : "" );
+    }
+}
+
+    /**
+     *  Sends data payload via CURL to the GAC.
+     *  @param  pPayloadData payload buffer address.
+     *  @param  payloadLength payload buffer size.
+     */
+void
+uploadDataCurl( const char *pPayloadData, long payloadLength )
+{
+    #if     !defined( HOST_I386 /* UBUNTU12 */ )
+    if ( s_uploadHandle == NULL )
+    {
+        s_uploadHandle  = curl_easy_init();
+        CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadData : init curl %s len %d %s",
+                s_uploadHandle == NULL ? "fail" : "OK", payloadLength, pPayloadData == NULL ? "DATA IS NULL" : "" ) );
+    }
+
+    if ( s_uploadHandle != NULL && s_gacAddress != NULL && payloadLength > 0 && pPayloadData != NULL )
+    {
+        CURLcode            res;
+        struct curl_slist  *chunk           = NULL;
+
+        CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadData : upload %d bytes", payloadLength ) );
+        curl_easy_setopt( s_uploadHandle, CURLOPT_URL, s_gacAddress );
+        curl_easy_setopt( s_uploadHandle, CURLOPT_WRITEFUNCTION, curlOutput );  // Otherwise it gets sent to stdout
+        curl_easy_setopt( s_uploadHandle, CURLOPT_POST, 1 );
+        curl_easy_setopt( s_uploadHandle, CURLOPT_CONNECTTIMEOUT_MS, 1600 );
+        curl_easy_setopt( s_uploadHandle, CURLOPT_TIMEOUT_MS, 3000 );
+        curl_easy_setopt( s_uploadHandle, CURLOPT_POSTFIELDSIZE, (long) payloadLength );
+
+        chunk   = curl_slist_append( chunk, "Expect:" );
+        res     = curl_easy_setopt( s_uploadHandle, CURLOPT_HTTPHEADER, chunk );
+
+        curl_easy_setopt( s_uploadHandle, CURLOPT_POSTFIELDS, pPayloadData );
+
+        // Perform Request with Specified Options
+        if ( ( res = curl_easy_perform( s_uploadHandle ) ) != 0 )
+        {
+            CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadData : send to %s fail %d - %s",
+                    s_gacAddress, res, curl_easy_strerror( res ) ) );
+        }
+        else
+        {
+            long            httpResponseCode;
+
+            curl_easy_getinfo( s_uploadHandle, CURLINFO_RESPONSE_CODE, &httpResponseCode );
+            CsDebug( APP_DEBUG_FLOW, ( APP_DEBUG_FLOW, "uploadData : send success response %d", httpResponseCode ) );
+        }
+    }
+    else
+    #endif
+    {
+        CsErrx( "uploadData : cannot upload %d bytes%s", payloadLength, pPayloadData == NULL ? " DATA IS NULL" : "" );
+    }
+}
+
+    /**
+     *  Gets received JSON formatted message (if any) from CURL.
+     *  @return received JSON formatted message.
+     */
+std::string
+getMessageCurl( )
+{
+    CsErrx( "getMessageCurl : CURL not supported" );
+    return "";
+}
+
+    /**
+     *  Ungest JSON formatted message via CURL.
+     *  @param  msg JSON formatted message to be pushed back to
+     *          received message queue.
+     */
+void
+ungetMessageCurl( std::string &msg )
+{
+    CsErrx( "ungetMessageCurl : CURL not supported" );
+}
+
+    /**
+     *  Puts JSON formatted message via CURL.
+     *  @param  msg JSON formatted message to be sent.
+     */
+void
+putMessageCurl( std::string &msg )
+{
+    CsErrx( "putMessageCurl : CURL not supported" );
+}
+
+    /**
+     *  Flushes CURL received message queue.
+     */
+void
+flushMessageCurl( )
+{
+    CsErrx( "flushMessageCurl : CURL not supported" );
+}
+
+    /**
+     *  Silences the debug output of curl.
+     *  @param  ptr
+     *  @param  size
+     *  @param  nmemb number of memory block.
+     *  @param  stream
+     *  @return Number of bytes output.
+     */
+static  size_t
+curlOutput( void *ptr, size_t size, size_t nmemb, void *stream )
+{
+    return size * nmemb;
+}

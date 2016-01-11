@@ -1,0 +1,13 @@
+# Process Manager information file
+Name = ipc_clean
+Alias = ipc_clean
+CommandLineArgs = --flush >/dev/null 2>%1
+Location = /afc/bin
+RunDirectory = /afc
+InitialisationTime = 3
+MaximumStarts = 2
+MaximumRuntime = 3
+Lifespan = TRANSIENT
+Exclusivity = EXCLUSIVE
+Group = 1
+

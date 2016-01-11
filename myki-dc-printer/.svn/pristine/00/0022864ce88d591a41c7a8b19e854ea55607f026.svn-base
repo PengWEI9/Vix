@@ -1,0 +1,933 @@
+{
+    "Receipts": {
+        "GeneralFooter": {
+            "Line01": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "small",
+                "data": "Issued by [CompanyName],"
+            },
+            "Line02": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "small",
+                "data": "ABN [CompanyABN]"
+            },				
+            "Line03": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "small",
+                "data": "Issued subject to the myki Terms of Use."
+            },
+            "Line04": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "small",
+                "data": "Visit [CompanyWebSite]"
+            },
+            "Line05": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "small",
+                "data": " "
+            }
+        },
+        "GeneralHeader": {
+            "Line02": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "normal",
+                "data": " "
+            },
+            "Line03": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "normal",
+                "data": "[Date]"
+            },
+            "Line04": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "normal",
+                "data": "Bus [Right]   [BusID]"
+            },
+            "Line05": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "normal",
+                "data": "Terminal ID [Right]   [TerminalID]"
+            },
+            "Line06": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "normal",
+                "data": "[Location]"
+            },
+            "Line07": {
+                "isBold": false,
+                "hasPlaceHolder": true,
+                "font": "normal",
+                "data": "Tax Invoice No [Right]   [ShiftNumber]-[TransactionNumber]"
+            },
+            "Line08": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "normal",
+                "data": "____________________________________"
+            },
+            "Line09": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "normal",
+                "data": " "
+            }
+        },
+        "TaxInvoice": { 
+            "Title": {
+                "Line01": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "myki Tax Invoice"
+                }
+            },
+            "Body": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                }
+            }
+        },
+        "Reversal": { 
+            "Title": {
+                "Line01": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "myki Receipt of Reversal"
+                }
+            },
+            "Body": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line02": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Orig. Trans: [Right] [OrigShiftNumber]-[OrigTransactionNumber]"
+                },
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Issue [OrigDate]"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line05": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Reversed Item"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "myki [Right] [MykiReference]"
+                },
+                "Line07": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Top up"
+                },
+                "Line08": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "myki money [Right] [AmountTopUp]"
+                },
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "New balance: [Right] [AmountNewBalance]"
+                },
+                "Line10": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line11": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Total [Right] [AmountTotal]"
+                },
+                "Line12": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Reversed to cash"
+                },
+                "Line13": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line14": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Message]"
+                },
+                "Line15": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line16": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Ticket Reversal."
+                },
+                "Line17": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Not valid for travel."
+                },
+                "Line18": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line19": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": "Driver must hand this slip and the"
+                },
+                "Line20": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": "annulled ticket in together with"
+                },
+                "Line21": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": "end of shift report."
+                },
+                "Line22": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": " "
+                }
+            }
+        },
+        "ShiftReport": {
+            "Title": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[ReportName] REPORT"
+                }
+            },
+            "Header": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line02": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Op [Right][OperatorID]"
+                },
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Shift [Right][ShiftNumber]"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Bus [Right][BusPlateN]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Shift On [Right][DateTimeShiftStart]"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Portn On [Right][DateTimePortionStart]"
+                },
+                "Line07": {
+                    "isBold":false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Shift Off [Right][DateTimeShiftEnd]"
+                },
+                "Line08": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "BF", 
+                    "data": "Net Cash BF [Right][AmountBroughtForward]"
+                },
+                "Line0r9": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "OB", 
+                    "data": "Out Of Balance"
+                }
+            },
+            "Body": { 
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line02": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Totals for shift(s):"
+                },
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "____________________________________"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Gross Cash [Right][AmountGrossCash]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Annulled Cash [Right][AmountAnnulledCash]"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Net Cash [Right][AmountNetCash]"
+                },
+                "Line07": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Gross Other [Right][AmountGrossOther]"
+                },
+                "Line08": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Annul Other [Right][AmountAnnulledOther]"
+                },
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Net Other [Right][AmountNetOther]"
+                },
+                "Line10": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Gross Paper Tcks [Right][GrossPaperTickets]"
+                },
+                "Line11": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Annul Paper Tcks [Right][AnnulledPaperTickets]"
+                },
+                "Line12": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Net Paper Tcks [Right][NetPaperTickets]"
+                },
+                "Line13": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Gross Sundry Tcks [Right][GrossSundryTickets]"
+                },
+                "Line14": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Annul Sundry Tcks [Right][AnnulledSundryTickets]"
+                },
+                "Line15": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Net Sundry Tcks [Right][NetSundryTickets]"
+                },
+                "Line16": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Full Pass Count [Right][FullPassCount]"
+                },
+                "Line17": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Conc Pass Count [Right][ConcessionPassCount]"
+                },
+                "Line18": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Annul Tickets [Right][AnnulledTickets]"
+                },
+                "Line19": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "____________________________________"
+                },
+                "Line20": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": ""
+                },
+                "Line21": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Cash Summary:"
+                },
+                "Line22": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "____________________________________"
+                },
+                "Line23": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": ""
+                },
+                "Line24": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "BF", 
+                    "data": "Brought Forward [Right][AmountBroughtForward]"
+                },
+                "Line25": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Portion Total [Right][AmountPortionCash]"
+                },
+                "Line26": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "____________________________________"
+                },
+                "Line27": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Shift Total* [Right][AmountNetCash]"
+                },
+                "Line28": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": ""
+                }
+            },
+            "Footer": { 
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "small",
+                    "data": "[ShiftReportFooter]"
+                }
+            },
+            "Line05": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "normal",
+                "data": "____________________________________"
+            },
+            "Line06": {
+                "isBold": false,
+                "hasPlaceHolder": false,
+                "font": "normal",
+                "data": ""
+            }
+        },
+        "TopUp": {
+            "Title": {
+                "Line01": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "myki Tax Invoice"
+                }
+            },
+            "Body": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line02": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "myki [Right]   [MykiReference]"
+                },                
+                "Line03": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Top up"
+                },
+                "Line04": {
+                    "isBold": true,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "myki money [Right]   [AmountTopUp]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "New balance: [Right]   [AmountNewBalance]"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line07": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Total [Right]   [AmountTotal]"
+                },
+                "Line08": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Message]"
+                },
+                "Line10": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line11": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "To obtain a tax invoice for "
+                },
+                "Line12": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "an amount of [RIMP] or more,"
+                },
+                "Line13": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "please call [CompanyPhone]."
+                },
+                "Line14": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line15": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Tax Invoice only."
+                },
+                "Line16": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Not valid for travel."
+                },
+                "Line17": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                }
+            }            
+        },
+        "NonTransit": {
+            "Title": {
+                "Line01": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "myki Tax Invoice"
+                }
+            },
+            "Body": {
+                
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "condition_1": "Rounding",
+                    "data": "  [Right] [AmountTotalBeforeRounding]"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "condition_1": "Rounding",
+                    "data": "Rounding [Right]  [AmountRounding]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Total [Right]   [AmountTotal]"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "GST",
+                    "data": "*Total GST incl [Right] [GST]"
+                },
+                "Line07": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "myki money"
+                },                
+                "Line08": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "[MykiReference]"
+                },                
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "New balance: [Right] [AmountNewBalance]"
+                },
+                "Line10": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "data": "Cash"
+                },
+                "Line11": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line12": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Message]"
+                },
+                "Line13": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line14": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "To obtain a tax invoice for "
+                },
+                "Line15": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "an amount of [RIMP] or more,"
+                },
+                "Line16": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "RIMP",
+                    "data": "please call [CompanyPhone]."
+                },
+                "Line17": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line18": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Tax Invoice only."
+                },
+                "Line19": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "Not valid for travel."
+                },
+                "Line20": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                }
+            }            
+        },
+        "Surcharge": {
+            "Title": {
+                "Line01": {
+                    "isBold": true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "myki Surcharge"
+                }
+            },
+            "Header": {
+                "Line02": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Date]"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Trans [Right]   [ShiftNumber]-[TransactionNumber]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Bus [Right]   [BusID]"
+                },
+                "Line06": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Route [Right]   [RouteID] Stop    [StopID]"
+                },
+                "Line07": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Location]"
+                },
+                "Line08": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "____________________________________"
+                },
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                }
+            },
+            "Body": {
+
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "condition_1": "Rounding",
+                    "data": "  [Right] [AmountTotalBeforeRounding]"
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "condition_1": "Rounding",
+                    "data": "Rounding [Right]  [AmountRounding]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "Total [Right]   [AmountTotal]"
+                },
+                "Line07": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "myki money"
+                },                
+                "Line08": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "[MykiReference]"
+                },                
+                "Line09": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "condition": "Tpurse",
+                    "data": "New balance: [Right] [AmountNewBalance]"
+                },
+                "Line10": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "condition": "Cash",
+                    "data": "Cash"
+                },
+                "Line11": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line12": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "normal",
+                    "data": "[Message]"
+                },
+                "Line13": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                },
+                "Line14": {
+                    "isBold" : true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "This product is only valid with a"
+                },
+                "Line15" : {
+                    "isBold" : true,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": "valid accompanying travel ticket"
+                },
+                "Line18": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "normal",
+                    "data": " "
+                }
+            },            
+            "Footer": {
+                "Line01": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "small",
+                    "data": "Issued by [CompanyName]."
+                },
+                "Line03": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": "Issued subject to the myki Terms of Use."
+                },
+                "Line04": {
+                    "isBold": false,
+                    "hasPlaceHolder": true,
+                    "font": "small",
+                    "data": "Visit [CompanyWebSite]"
+                },
+                "Line05": {
+                    "isBold": false,
+                    "hasPlaceHolder": false,
+                    "font": "small",
+                    "data": " "
+                }
+            }
+        }
+    }
+}
+

@@ -1,0 +1,18 @@
+# Process Manager information file
+Name = dc
+Alias = dc
+StartScript = /etc/init.d/init.d/dc start
+StopScript = /etc/init.d/init.d/dc stop
+Location = /afc/bin
+RunDirectory = /afc
+NamedPipe = /tmp/dc.pipe
+InitialisationTime = 60
+HealthPollPeriod = 15
+MaximumStarts = 5
+TerminationTime = 30
+Lifespan = PERSISTENT
+Exclusivity = EXCLUSIVE
+ActionOnFailure = RESTART
+RestartPeriod = 1
+Group = 7
+Dependency = cced

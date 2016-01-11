@@ -1,0 +1,12 @@
+[TestClass1]
+TestOutputFile=/afc/log/TestCaseProducts.log
+TestClassName=TestCaseProducts
+AppendFile=false
+TestMethod1=testGetProducts_NonTransit_001
+TestMethod2=testGetProducts_Surcharge_001
+[TestClass2]
+TestOutputFile=/afc/log/TestCaseDeviceParameters.log
+TestClassName=TestCaseDeviceParameters
+AppendFile=false
+TestMethod1=testGetDeviceParameters_PaymentMethod_001
+TestMethod2=testGetDeviceParameters_PaymentMethod_002

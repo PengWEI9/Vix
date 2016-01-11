@@ -1,0 +1,110 @@
+#!/bin/sh -e
+
+# This script can be called in the following ways:
+#
+# After the package was installed:
+#       <postinst> configure <old-version>
+#
+#
+# If prerm fails during upgrade or fails on failed upgrade:
+#       <old-postinst> abort-upgrade <new-version>
+#
+# If prerm fails during removal:
+#       <old-postinst> abort-remove
+#
+# If prerm fails during deconfiguration of a package:
+#       <postinst> abort-deconfigure in-favour <new-package> <version>
+#                  removing <old-package> <version>
+#
+# If prerm fails during replacement due to conflict:
+#       <postinst> abort-remove in-favour <new-package> <version>
+
+
+
+# some defaults.
+PATH=/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+remove_crons ()
+{
+	CRONTMP=/tmp/xxncron.$$
+	/usr/bin/crontab -l | sed -e "/#myki_utils/d" > $CRONTMP
+	/usr/bin/crontab -r
+	/usr/bin/crontab $CRONTMP
+	rm $CRONTMP
+}
+
+install_crons ()
+{
+	#set -vx
+	# initialise the crontab entries
+	#
+	CRONTMP=/tmp/xxncron.$$
+	# avoid duplicating the cron jobs
+	/usr/bin/crontab -l |sed -e "/#myki_utils/d"> $CRONTMP
+	cat /afc/etc/utils.crontab >> $CRONTMP
+	/usr/bin/crontab $CRONTMP
+#	rm $CRONTMP
+	echo "root crontab updated"
+}
+#set -vx
+
+GetTerminalType ()
+{
+	if [ -x /afc/bin/getini ]; then
+		if [ -f /afc/etc/commissioned.ini ]; then
+			TERMINAL_TYPE=`/afc/bin/getini -f /afc/etc/commissioned.ini General:TerminalType`
+		else
+			TERMINAL_TYPE="Unknown"
+		fi
+	else
+		echo "ERROR : Could not find /afc/bin/getini exe file"
+		exit 1
+	fi
+}
+
+UpdateCfengineConfig ()
+{
+	if [ "$TERMINAL_TYPE" != "GAC" ]; then
+		return
+	fi
+	# Rule out gacreader : the GAC and the gacreader have "GAC" terminal type
+	if uname -m|grep arm ; then
+		return
+	fi
+	/etc/init.d/cfengine3 stop
+	TMPFILE=/tmp/cfengine3.$$
+	rm -f $TMPFILE
+	cat /etc/default/cfengine3|sed -e 's/RUN_CFSERVERD=0/RUN_CFSERVERD=1/' >$TMPFILE
+	mv -f $TMPFILE /etc/default/cfengine3
+	/etc/init.d/cfengine3 start
+}
+
+
+case "$1" in
+	configure|"")
+		install_crons
+		# added to /etc/ld.so.conf.d
+		test ! -d /afc/lib && mkdir /afc/lib
+		/sbin/ldconfig
+		mkdir -p /var/spool/cron/crontabs
+        #transfer audit directory structures
+        mkdir -p /afc/data/audit/current
+        mkdir -p /afc/data/audit/upload
+        mkdir -p /afc/data/audit/archive
+		GetTerminalType
+		UpdateCfengineConfig
+
+		;;
+    abort-upgrade|abort-deconfigure|abort-remove)
+		remove_crons
+        ;;
+
+    *)
+        echo "$0 called with unknown argument \`$1'" 1>&2
+        exit 1
+        ;;
+esac
+
+
+
+

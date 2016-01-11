@@ -1,0 +1,36 @@
+# Define your Printer commands with a [Header] with a parameter of "Command", with a hex value, omitting the 0x
+# eg 
+# [PRINT_SCENARIO_SET_BOLD]
+# Command=2ff1
+# This will tell the API to send hex values of 0x2f and 0xf1
+# TODO: Above is another task.
+
+[Serial]
+Device=/dev/ttyPSC2
+Speed=9600
+StopBits=1
+
+[JSON]
+Path=/afc/etc/Receipts.json
+
+[Debug]
+Debug=1
+; DebugEnabled=N
+DebugEnabled=Y
+Verbose=Y
+Warning=Y
+Console=N
+LocalLogFile=/afc/log/dcprinter
+LocalLogMB=10
+LocalLogCount=5
+
+[Command]
+Pipe=/tmp/bdcprinter.pipe
+Users=6
+Mode=0660
+Idle=60
+ThrMin=4
+ThrMax=6
+ThrDowsy=60
+
+%/afc/etc/commissioned.ini

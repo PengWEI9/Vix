@@ -1,0 +1,38 @@
+#!/bin/sh
+
+INI=dc.ini
+AFCHOME=${AFC:=/afc}
+INIPATH=$AFCHOME/etc/$INI
+TMPINI=${INIPATH}-deinstall
+
+echo "PreRm: saving INI file $INIPATH as $TMPINI"
+
+[ -f $TMPINI ] && rm $TMPINI
+
+cp -p $INIPATH $TMPINI
+
+PATH=/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+remove_crons ()
+{
+        CRONTMP=/tmp/xxncron.$$
+        /usr/bin/crontab -l | sed -e "/#myki_dc/d" > $CRONTMP
+        /usr/bin/crontab -r
+        /usr/bin/crontab $CRONTMP
+        rm $CRONTMP
+}
+
+
+case "$1" in
+        remove)
+                # lets clean any crontab entries
+                #
+                remove_crons
+                ;;
+        *)
+# do nothing
+                ;;
+esac
+
+exit 0
+ 

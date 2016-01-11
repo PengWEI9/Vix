@@ -1,0 +1,106 @@
+{
+    "terminalid":"1234",
+        "userid":"D101",
+        "name":"productsale",
+        "string_error":"WS_SUCCESS",
+        "string_blocking_reason":"BLOCKING_REASON_LOST_STOLEN",
+        "expiry":"24 Dec 15 12:00 pm",
+        "timestamp":"2015-12-16T10:44:55+10:00",
+        "data":
+        {
+            "CompanyPhone":"1800 800 007",
+            "CompanyName":"Public Transport Victoria",
+            "CompanyABN":"37 509 050 593",
+            "CompanyWebSite":"ptv.vic.gov.au",
+            "BusId":"VIXBUS-1",
+            "TerminalId":999999,
+            "ShiftNumber":9999,
+            "Location":"Whitehorse/Dorking",
+            "SalesMessage":"Merry Christmas",
+            "ReceiptInvoiceThreshold":1000,
+            "PrintTaxInvoice":true,
+            "paymenttype":"cash",
+            "cardnumber":"0123456789ABCDEF",
+            "remvalue":5200,
+            "txnseqno":1234,
+            "saleseqno":1212,
+            "amounttotal":7812,
+            "amountgst":710,
+            "amountrounding":-2,
+            "amountpaid":7810,
+            "vat_rate":10,
+            "string_reason":"REASON_NOT_APPLICABLE",
+            "cartitems":
+                [
+                {
+                    "itemnumber":1,
+                    "GSTApplicable":false,
+                    "PLU":"4. myki Child",
+                    "Price":50,
+                    "id":46,
+                    "issuer_id":1,
+                    "long_desc":"GTS Timetable",
+                    "short_desc":"GTS Timetable",
+                    "subtype":"None",
+                    "type":"ThirdParty"
+                },
+                {
+                    "itemnumber":2,
+                    "GSTApplicable":false,
+                    "PLU":"4. myki Child",
+                    "Price":50,
+                    "id":46,
+                    "issuer_id":1,
+                    "long_desc":"GTS Timetable",
+                    "short_desc":"GTS Timetable",
+                    "subtype":"None",
+                    "type":"ThirdParty"
+                },
+                {
+                    "itemnumber":3,
+                    "GSTApplicable":false,
+                    "Price":5000,
+                    "id":300,
+                    "issuer_id":1,
+                    "long_desc":"TPurse Load",
+                    "short_desc":"TPurse Load",
+                    "subtype":"None",
+                    "type":"LLSC"
+                },
+                {
+                    "itemnumber":4,
+                    "GSTApplicable":true,
+                    "PLU":"Surcharge Me",
+                    "Price":50,
+                    "id":47,
+                    "issuer_id":1,
+                    "long_desc":"Surcharge Me Now",
+                    "short_desc":"Surcharge Me Now",
+                    "subtype":"None",
+                    "type":"PremiumSurcharge"
+                }   
+            ],
+                "surcharge":
+                {
+                    "amounttotal":1234,
+                    "amountgst":123,
+                    "amountrounding":-4,
+                    "amountpaid":1230,
+                    "cartitems":
+                        [
+                        {
+                            "itemnumber":4,
+                            "GSTApplicable":true,
+                            "PLU":"Surcharge Me",
+                            "Price":50,
+                            "id":47,
+                            "issuer_id":1,
+                            "long_desc":"Surcharge Me Now",
+                            "short_desc":"Surcharge Me Now",
+                            "subtype":"None",
+                            "type":"PremiumSurcharge"
+                        }
+                    ]
+                }
+        }
+}
