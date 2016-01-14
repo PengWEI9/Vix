@@ -25,7 +25,7 @@
 **   Target(s)      : Independent
 **
 **  Subversion      :
-**      $Id: wssales.cpp 88060 2016-01-04 03:16:20Z atran $
+**      $Id: wssales.cpp 88945 2016-01-12 03:56:05Z atran $
 **      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/wssales.cpp $
 **
 **  History         :
@@ -994,14 +994,16 @@ processProductSalesReversal( Json::Value &request )
             {
                 CsDbg( APP_DEBUG_STATE, "processProductSalesReversal : wrong card (%s/%s)",
                         cardNumber.c_str(), csn.c_str() );
-                response[ "string_error" ]  = getResultString( WS_ERROR_WRONG_CARD );
+                response[ "data" ][ "cardnumber" ]  = cardNumber;
+                response[ "string_error" ]          = getResultString( WS_ERROR_WRONG_CARD );
             }
         }
         else
         {
             /*  Not Transit card!? */
             CsErrx( "processProductSalesReversal : none TRANSIT card detected" );
-            response[ "string_error" ]  = getResultString( WS_ERROR_NOT_TRANSIT_CARD );
+            response[ "data" ][ "cardnumber" ]  = cardNumber;
+            response[ "string_error" ]          = getResultString( WS_ERROR_NOT_TRANSIT_CARD );
         }
     }
     else

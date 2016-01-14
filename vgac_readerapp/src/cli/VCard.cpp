@@ -21,7 +21,7 @@
 **   Target(s)      : Independent
 **
 **  Subversion      :
-**      $Id: VCard.cpp 88757 2016-01-10 23:51:25Z atran $
+**      $Id: VCard.cpp 88945 2016-01-12 03:56:05Z atran $
 **      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/vgac_readerapp/trunk/src/cli/VCard.cpp $
 **
 **  History         :
@@ -282,11 +282,13 @@ bool detectCard(void /*char* */ *args)
 
 void sendCardNotifyMsg()
 {
+    /*
     CsDebug(APP_DEBUG_DETAIL, (APP_DEBUG_DETAIL, "About to notify main app of card"));
     IPC_Generic_t message;
     message.hdr.type = IPC_CARD_NOTIFY;
     message.hdr.source = APP_TASK;
     IpcSend(IpcGetID(APP_TASK), &message, sizeof(message));
+    */
 }
 
 bool card_detect(int argc, const char *argv[], void *data )
@@ -454,7 +456,7 @@ bool imageCard(void /* char* */ *args)
     /* Set virtual DESFire 'device' parameters */
     VirtualDeviceParams.DetectCardPresentDelayMs    = 10;
     VirtualDeviceParams.OtherCommandResponseDelayMs = 10;
-    VirtualDeviceParams.CheckCardPresentCountLimit  = 2;
+    VirtualDeviceParams.CheckCardPresentCountLimit  = 10;
 
 
     ret = CT_Ioctl( 0x500, CT_IOCTL_SET_VIRTUAL_DEVICE_PARAMS, &VirtualDeviceParams, NULL);

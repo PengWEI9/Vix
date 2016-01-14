@@ -1,0 +1,294 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MBU
+**  Filename        : BR_VIX_LLSC_20_1.cpp
+**  Author(s)       : An Tran
+**
+**  ID              : BR_VIX_LLSC_20_1
+**
+**  Name            : T-Purse Add Value
+**
+**  Data Fields     :
+**
+**      1.  Static.ServiceProviderId
+**      2.  Tariff.MinimumAddValue
+**      3.  Tariff.MaximumAddValue
+**      4.  Tariff.MaximumTPurseBalance
+**      5.  Tariff.AddValueEnabled
+**      6.  Dynamic.TPurseLoadAmount
+**      7.  Dynamic.LoadLogTxValue
+**      8.  TAppTPurseBalance.Balance
+**      9.  TAppPurseControl.NextTxSeqNo
+**
+**  Pre-Conditions  :
+**
+**      1.  TPurse add value services (5) is enabled.
+**      2.  TPurse load amount (6) is greater than 0.
+**      3.  TPurse load amount (6) is greater than or equal to Minimum Add Value (2).
+**      4.  TPurse load amount (6) is less than or equal to Maximum Add Value (3).
+**      5.  TPurse balance (8) + TPurse load amount (6) is less than or equal to
+**          Maximum TPurse balance (4).
+**
+**  Description     :
+**
+**      1.  Perform a TPurseLoad/None transaction:
+**          a.  Increment TAppTPurseBalance.Balance(8) by Dynamic.TPurseLoadAmount(6).
+**      2.  Modify load log
+**          a.  Definition:
+**              i.  If LoadTxType is not set then
+**                  (1) LoadTxType to Load value (1)
+**                  (2) Else Set LoadTxType To Multiple ActionLists (21)
+**              ii. Determine loadlog ControlBitmap though look up of the TxLoadType
+**              iii.TxSeqNo = NextTxSeqNo(9)
+**              iv. ProviderID = ServiceProviderID(1)
+**              v.  Set location object to the current device location (i.e Entry
+**                  Point, Route, Stop ID)
+**          b.  Value:
+**              i.  Dynamic.LoadLogTxValue = Dynamic.LoadLogTxValue + Add value amount(6)
+**              ii. If Dynamic.LoadLogTxValue is greater than 0 then set
+**                  LoadLogTxValue = Dynamic.LoadLogTxValue Else Set LoadLogTxValue = 0
+**              iii.NewTPurseBalance = TAppTPurseBalance.Balance(8)
+**              iv. PaymentMethod = Cash (2)
+**
+**  Post-Conditions :
+**
+**      1.  TPurse balance is incremented by top-up amount.
+**
+**  Member(s)       :
+**      BR_VIX_LLSC_20_1        [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: BR_VIX_LLSC_20_1.c 71739 2015-08-30 22:47:20Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/src/BR_VIX_LLSC_20_1.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  05.08.15    ANT   Create
+**    1.01  26.08.15    ANT   Added    Added pre-conditions
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include <LDT.h>
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+/*
+ *      Local Constants and Macros
+ *      --------------------------
+ */
+
+/*
+ *      Local Variables
+ *      ---------------
+ */
+
+/*
+ *      Global Variables
+ *      ----------------
+ */
+
+/*==========================================================================*
+**
+**  BR_VIX_LLSC_20_1
+**
+**  Description     :
+**      Implements business rule BR_VIX_LLSC_20_1.
+**
+**  Parameters      :
+**      pData               [I/O]   BR context data
+**
+**  Returns         :
+**      RULE_RESULT_EXECUTED
+**      RULE_RESULT_BYPASSED
+**      RULE_RESULT_ERROR
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+RuleResult_e    BR_VIX_LLSC_20_1( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t           *pMYKI_TAControl         = NULL;
+    MYKI_TAPurseBalance_t      *pMYKI_TAPurseBalance    = NULL;
+    MYKI_TAPurseControl_t      *pMYKI_TAPurseControl    = NULL;
+    TAppLoadLog_t              *pAppLoadLog             = NULL;
+    int                         nResult                 = 0;
+
+    CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Start (Load T-Purse)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_VIX_LLSC_20_1 : Invalid argument(s)" );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAControlGet( &pMYKI_TAControl ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_1 : MYKI_CS_TAControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseBalanceGet( &pMYKI_TAPurseBalance ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_1 : MYKI_CS_TAPurseBalanceGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseControlGet( &pMYKI_TAPurseControl ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_1 : MYKI_CS_TAPurseControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        /*  1.  TPurse add value services (5) is enabled. */
+        if ( pData->Tariff.addValueEnabled == 0 )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Bypassed - add value services disabled" );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 1, 1, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_ADDVALUE_DISABLED;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  2.  TPurse load amount (5) is greater than 0. */
+        if ( pData->DynamicData.tpurseLoadAmount == 0 )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Bypassed - zero T-Purse load amount" );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 1, 2, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_INVALID_AMOUNT;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  3.  TPurse load amount (6) is greater than or equal to Minimum Add Value (2). */
+        if ( pData->DynamicData.tpurseLoadAmount < pData->Tariff.minimumAddValue )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Bypassed - T-Purse load amount(%d) < minimum add value(%d)",
+                    pData->DynamicData.tpurseLoadAmount, pData->Tariff.minimumAddValue );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 1, 3, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_INVALID_AMOUNT;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  4.  TPurse load amount (6) is less than or equal to Maximum Add Value (3). */
+        if ( pData->DynamicData.tpurseLoadAmount > pData->Tariff.maximumAddValue )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Bypassed - T-Purse load amount(%d) > maximum add value(%d)",
+                    pData->DynamicData.tpurseLoadAmount, pData->Tariff.maximumAddValue );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 1, 4, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_INVALID_AMOUNT;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  5.  TPurse balance (8) + TPurse load amount (6) is less than or equal to Maximum TPurse balance (4). */
+        if ( ( pMYKI_TAPurseBalance->Balance + pData->DynamicData.tpurseLoadAmount ) > pData->Tariff.TPurseMaximumBalance )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Bypassed - T-Purse balance(%d) + T-Purse load amount(%d) > T-Purse maximum balance(%d)",
+                    pMYKI_TAPurseBalance->Balance, pData->DynamicData.tpurseLoadAmount, pData->Tariff.TPurseMaximumBalance );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 1, 5, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_EXCEED_MAX_BALANCE;
+            return  RULE_RESULT_BYPASSED;
+        }
+    }
+
+    /*  PROCESSING */
+    {
+        /*  1.  Perform a TPurseLoad/None transaction:
+                a.  Increment TAppTPurseBalance.Balance(4) by Dynamic.TPurseLoadAmount(2). */
+        if ( myki_br_ldt_PurseLoad_None( pData, pData->DynamicData.tpurseLoadAmount ) < 0 )
+        {
+            CsErrx( "BR_VIX_LLSC_20_1 : myki_br_ldt_PurseLoad_None() failed");
+            return  RULE_RESULT_ERROR;
+        }
+
+        /*  2.  Update load log */
+        {
+            pData->InternalData.IsLoadLogUpdated        = TRUE;
+            pAppLoadLog                                 = &pData->InternalData.LoadLogData;
+
+            /*  a. Definition: */
+            {
+                /*  i.  If LoadTxType is not set then
+                        (1) LoadTxType to Load value (1)
+                        (2) Else Set LoadTxType To Multiple ActionLists (21) */
+                if ( pAppLoadLog->transactionType == MYKI_BR_TRANSACTION_TYPE_NONE )
+                {
+                    pAppLoadLog->transactionType        = MYKI_BR_TRANSACTION_TYPE_TPURSE_LOAD_VALUE;
+                }
+                else
+                {
+                    pAppLoadLog->transactionType        = MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST;
+                }
+
+                /*  ii. Determine loadlog ControlBitmap though look up of the TxLoadType (Done by framework)
+                    iii.TxSeqNo = NextTxSeqNo(5) */
+                pAppLoadLog->transactionSequenceNumber  = pMYKI_TAPurseControl->NextTxSeqNo - 1;
+
+                /*  iv. ProviderID = ServiceProviderID(1) (Done by framework) 
+                    v.  Set location object to the current device location (i.e Entry Point, Route, Stop ID) (Done by framework) */
+            }
+
+            /*  b.  Value: */
+            {
+                /*  i.  Dyanamic.LoadLogTxValue(3) = Dynamic.LoadLogTxValue(3) + Add value amount(4) */
+                pAppLoadLog->isTransactionValueSet      = TRUE;
+                pData->DynamicData.loadLogTxValue      += pData->DynamicData.tpurseLoadAmount;
+
+                /*  ii. If Dynamic.LoadLogTxValue(3) is greater than 0 */
+                if ( pData->DynamicData.loadLogTxValue > 0 )
+                {
+                    /*  then set LoadLogTxValue(12) = Dynamic.LoadLogTxValue(3) */
+                    pAppLoadLog->transactionValue       = (U32_t)pData->DynamicData.loadLogTxValue;
+                }
+                else
+                {
+                    /*  Else Set LoadLogTxValue(12) = 0 */
+                    pAppLoadLog->transactionValue       = (U32_t)0;
+                }
+
+                /*  iii.NewTPurseBalance = TAppTPurseBalance.Balance(4) */
+                pAppLoadLog->isNewTPurseBalanceSet      = TRUE;
+                pAppLoadLog->newTPurseBalance           = pMYKI_TAPurseBalance->Balance;
+
+                /*  iv. PaymentMethod = Cash (2) */
+                pAppLoadLog->isPaymentMethodSet         = TRUE;
+                pAppLoadLog->paymentMethod              = TAPP_USAGE_LOG_PAYMENT_METHOD_CASH;
+            }
+        }
+    }
+
+    /*  Post-Conditions */
+    {
+        pData->ReturnedData.acceptReason        = MYKI_BR_ACCEPT_TPURSE_LOADED;
+        pData->ReturnedData.topupAmount         = pData->DynamicData.tpurseLoadAmount;
+        pData->ReturnedData.remainingBalance    = pMYKI_TAPurseBalance->Balance;
+        pData->ReturnedData.txnSeqNo            = pAppLoadLog->transactionSequenceNumber;
+    }
+
+    CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_1 : Executed" );
+    return  RULE_RESULT_EXECUTED;
+}   /* BR_VIX_LLSC_20_1( ) */

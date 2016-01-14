@@ -1,0 +1,394 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MBU
+**  Filename        : BR_LLSC_99_1.cpp
+**  Author(s)       : An Tran
+**
+**  ID              : BR_LLSC_99_1
+**
+**  Name            : LLSC Pre-commit Check - Section 7, NTS0177 v8.1
+**
+**  Data Fields     :
+**
+**  Pre-conditions  :
+**
+**      1.  For each product that is allocated (TAppControl.Directory[n].Status
+**          not Unused)
+**          a.  If the product is activated and the Start date time is greater
+**              than the End date time. (Snapshot Reason Code: BR_LLSC_0_1_Check1a)
+**          b.  If the product is activated and is of type daily or n-hour or
+**              Single Trip and the difference between the start date and expiry
+**              time is greater than 24 hours. (Snapshot Reason Code:
+**              BR_LLSC_0_1_Check1b)
+**          c.  If the product is activated and is of type weekly and the
+**              difference between the start date and expiry time is greater
+**              than 8 days. (Snapshot Reason Code: BR_LLSC_0_1_Check1c)
+**          d.  If the product is of subtype Epass (not fixed epass) and status
+**              is activated and the instance count is not zero, RoundUP to
+**              Days (Product[n].EndDateTime minus Product[n].StartDateTime)
+**              should be equal to the Instance Count (Snapsot Reason Code:
+**              BR_LLSC_0_1_Check1d).
+**          e.  If the product is “Issued” status and is product subtype is not
+**              (e-pass or fixed e-pass). (Snapshot Reason Code: BR_LLSC_0_1_Check2a)
+**          f.  If the product is not an n-hour and Product.ControlBitmap
+**              provisional bit is set. (Snapshot Reason Code: BR_LLSC_0_1_Check3)
+**          g.  If the Product.ControlBitmap provisional bit is set and it is not
+**              the product in use. (Snapshot Reason Code: BR_LLSC_0_1_Check3)
+**      2.  If the TApp.Daily.CappingExpiry is more than 1 day in the future.
+**          (Snapshot Reason Code: BR_LLSC_0_1_Check4And5)
+**      3.  If the TApp.Weekly.CappingExpiry is more than 8 day into the
+**          future. (Snapshot Reason Code: BR_LLSC_0_1_Check4And5)
+**      4.  If the TApp.TPurse.Balance is less than two (2) times the negative
+**          (Tariff.MaximumTPurseBalance) OR if TApp.TPurse.Balance is greater
+**          than two (2) times the Tariff.MaximumTPurseBalance. (Snapshot
+**          Reason Code: TPurseBalanceExcess)
+**      5.  If the TApp.TPurse.Balance is NOT equal to the
+**          TApp.TPurseControl.LastChangeNewBalance. (Snapshot Reason Code:
+**          TPurseBalance)
+**      6.  If TApp.TPurseControl.NextTxSeqNo is NOT equal to
+**          TApp.TPurseControl.LastChangeTxSeqNo +1. (Snapshot Reason Code:
+**          TPurseTxSeqNo)
+**
+**  Description     :
+**
+**  Post-conditions :
+**
+**  Member(s)       :
+**      BR_LLSC_99_1            [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: BR_LLSC_99_1.c 73412 2015-09-14 21:30:17Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/src/BR_LLSC_99_1.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  08.09.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+/*
+ *      Local Constants and Macros
+ *      --------------------------
+ */
+
+/*
+ *      Local Variables
+ *      ---------------
+ */
+
+/*
+ *      Global Variables
+ *      ----------------
+ */
+
+/*==========================================================================*
+**
+**  BR_LLSC_99_1
+**
+**  Description     :
+**      BR_LLSC_99_1 business rule.
+**
+**  Parameters      :
+**      pData               [I/O]   BR context data
+**
+**  Returns         :
+**      RULE_RESULT_EXECUTED
+**      RULE_RESULT_BYPASSED
+**      RULE_RESULT_ERROR
+**
+**  Returns         :
+**      None
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+RuleResult_e
+BR_LLSC_99_1( MYKI_BR_ContextData_t *pData )
+{
+    int                     dirIndex                = 0;
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_TACapping_t       *pMYKI_TACapping         = NULL;
+    MYKI_TAProduct_t       *pMYKI_TAProduct         = NULL;
+    MYKI_TAPurseBalance_t  *pMYKI_TAPurseBalance    = NULL;
+    MYKI_TAPurseControl_t  *pMYKI_TAPurseControl    = NULL;
+    MYKI_Directory_t       *pDirectory              = NULL;
+    ProductType_e           productType             = PRODUCT_TYPE_UNKNOWN;
+    Currency_t              minTPurseBalance        = 0;
+    Currency_t              maxTPurseBalance        = 0;
+    int                     nResult                 = 0;
+
+    CsDbg( BRLL_RULE, "BR_LLSC_99_1 : Start (LLSC Pre-commit Check)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_LLSC_99_1 : Invalid argument(s)" );
+        return RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAControlGet( &pMYKI_TAControl ) ) < 0 )
+    {
+        CsErrx( "BR_LLSC_99_1 : MYKI_CS_TAControlGet() failed (%d)", nResult );
+        return RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TACappingGet( &pMYKI_TACapping ) ) < 0 )
+    {
+        CsErrx( "BR_LLSC_99_1 : MYKI_CS_TACappingGet() failed (%d)", nResult );
+        return RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseBalanceGet( &pMYKI_TAPurseBalance ) ) < 0 )
+    {
+        CsErrx( "BR_LLSC_99_1 : MYKI_CS_TAPurseBalanceGet() failed (%d)", nResult );
+        return RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseControlGet( &pMYKI_TAPurseControl ) ) < 0 )
+    {
+        CsErrx( "BR_LLSC_99_1 : MYKI_CS_TAPurseControlGet() failed (%d)", nResult );
+        return RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        for ( dirIndex = 1; dirIndex < DIMOF( pMYKI_TAControl->Directory ); dirIndex++ )
+        {
+            if ( ( nResult = myki_br_GetCardProduct( dirIndex, &pDirectory, NULL ) ) < 0 )
+            {
+                CsErrx( "BR_LLSC_99_1 : myki_br_GetCardProduct(%d) failed (%d)", dirIndex, nResult );
+                return RULE_RESULT_ERROR;
+            }   /*  end-of-if */
+
+            /*  1.  For each product that is allocated (TAppControl.Directory[n].Status
+                    not Unused) */
+            if ( pDirectory->Status == TAPP_CONTROL_DIRECTORY_STATUS_UNUSED )
+            {
+                continue;
+            }   /*  end-of-if */
+
+            if ( ( nResult = myki_br_GetCardProduct( dirIndex, &pDirectory, &pMYKI_TAProduct ) ) < 0 )
+            {
+                CsErrx( "BR_LLSC_99_1 : myki_br_GetCardProduct(%d) failed (%d)", dirIndex, nResult );
+                return RULE_RESULT_ERROR;
+            }   /*  end-of-if */
+
+            productType = myki_br_cd_GetProductType( pDirectory->ProductId );
+
+            if ( pDirectory->Status == TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED )
+            {
+                /*  a.  If the product is activated and the Start date time is greater
+                        than the End date time. (Snapshot Reason Code: BR_LLSC_0_1_Check1a) */
+                if ( pMYKI_TAProduct->StartDateTime > pMYKI_TAProduct->EndDateTime )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : StartDateTime(%d) > EndDateTime(%d)",
+                            dirIndex, pMYKI_TAProduct->StartDateTime, pMYKI_TAProduct->EndDateTime );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 1 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+
+                /*  b.  If the product is activated and is of type daily or n-hour or
+                        Single Trip and the difference between the start date and expiry
+                        time is greater than 24 hours. (Snapshot Reason Code:
+                        BR_LLSC_0_1_Check1b) */
+                if
+                (
+                    ( productType == PRODUCT_TYPE_DAILY || productType == PRODUCT_TYPE_SINGLE ) &&
+                    ( pMYKI_TAProduct->EndDateTime > ( pMYKI_TAProduct->StartDateTime + HOURS_TO_SECONDS( 24 ) ) )
+                )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : %s and EndDateTime(%d) > StartDateTime(%d) + 24 hours",
+                            dirIndex, myki_br_GetProductTypeName( productType ),
+                            pMYKI_TAProduct->EndDateTime, pMYKI_TAProduct->StartDateTime );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 2 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+
+                /*  c.  If the product is activated and is of type weekly and the
+                        difference between the start date and expiry time is greater
+                        than 8 days. (Snapshot Reason Code: BR_LLSC_0_1_Check1c) */
+                if
+                (
+                    ( productType == PRODUCT_TYPE_WEEKLY ) &&
+                    ( pMYKI_TAProduct->EndDateTime > ( pMYKI_TAProduct->StartDateTime + DAYS_TO_SECONDS( 8 ) ) )
+                )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : Weekly and EndDateTime(%d) > StartDateTime(%d) + 8 days",
+                            dirIndex, pMYKI_TAProduct->EndDateTime, pMYKI_TAProduct->StartDateTime );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 3 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+
+                /*  d.  If the product is of subtype Epass (not fixed epass) and status
+                        is activated and the instance count is not zero, RoundUP to
+                        Days (Product[n].EndDateTime minus Product[n].StartDateTime)
+                        should be equal to the Instance Count (Snapsot Reason Code:
+                        BR_LLSC_0_1_Check1d). */
+                if
+                (
+                    ( productType == PRODUCT_TYPE_EPASS ) && ( myki_br_cd_IsFixedePass( pDirectory->ProductId ) == FALSE ) &&
+                    ( pMYKI_TAProduct->InstanceCount != 0 )
+                )
+                {
+                    Time_t  EPassDuration   = ( pMYKI_TAProduct->EndDateTime - pMYKI_TAProduct->StartDateTime + DAYS_TO_SECONDS( 1 ) - 1 ) / DAYS_TO_SECONDS( 1 );
+
+                    if ( EPassDuration != pMYKI_TAProduct->InstanceCount )
+                    {
+                        CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : ePass and InstanceCount(%d) / StartDateTime(%d) / EndDateTime(%d) invalid",
+                                dirIndex, pMYKI_TAProduct->InstanceCount, pMYKI_TAProduct->StartDateTime, pMYKI_TAProduct->EndDateTime );
+                        pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                        pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 4 );
+                        return  RULE_RESULT_BYPASSED;
+                    }
+                }
+            }
+
+            /*  e.  If the product is “Issued” status and is product subtype is not
+                    (e-pass or fixed e-pass). (Snapshot Reason Code: BR_LLSC_0_1_Check2a) */
+            if ( pDirectory->Status == TAPP_CONTROL_DIRECTORY_STATUS_ISSUED )
+            {
+                if ( productType != PRODUCT_TYPE_EPASS )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : Invalid ISSUED %s(%d) product",
+                            dirIndex, myki_br_GetProductTypeName( productType ), productType );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 5 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+            }
+
+            if ( ( pMYKI_TAProduct->ControlBitmap & TAPP_TPRODUCT_CONTROL_PROVISIONAL_BITMAP ) != 0 )
+            {
+                /*  f.  If the product is not an n-hour and Product.ControlBitmap
+                        provisional bit is set. (Snapshot Reason Code: BR_LLSC_0_1_Check3) */
+                if ( productType != PRODUCT_TYPE_NHOUR )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : PROVISIONAL set on %s(%d) product",
+                            dirIndex, myki_br_GetProductTypeName( productType ), productType );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 6 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+
+                /*  g.  If the Product.ControlBitmap provisional bit is set and it is not
+                        the product in use. (Snapshot Reason Code: BR_LLSC_0_1_Check3) */
+                if ( dirIndex != pMYKI_TAControl->ProductInUse )
+                {
+                    CsErrx( "BR_LLSC_99_1 : Bypassed - Product %d : PROVISIONAL product but not in use(%d)",
+                            dirIndex, pMYKI_TAControl->ProductInUse );
+                    pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                    pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 1, 7 );
+                    return  RULE_RESULT_BYPASSED;
+                }
+            }
+
+            /*  2.  If the TApp.Daily.CappingExpiry is more than 1 day in the future.
+                    (Snapshot Reason Code: BR_LLSC_0_1_Check4And5) */
+            if ( pMYKI_TACapping->Daily.Expiry > ( pData->DynamicData.currentBusinessDate + 1 ) )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - Daily capping counter expiry(%d) > current(%d) + 1",
+                        pMYKI_TACapping->Daily.Expiry, pData->DynamicData.currentBusinessDate );
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 2, 0 );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                return  RULE_RESULT_BYPASSED;
+            }
+
+            /*  3.  If the TApp.Weekly.CappingExpiry is more than 8 day into the
+                    future. (Snapshot Reason Code: BR_LLSC_0_1_Check4And5) */
+            if ( pMYKI_TACapping->Weekly.Expiry > ( pData->DynamicData.currentBusinessDate + 8 ) )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - Weekly capping counter expiry(%d) > current(%d) + 8",
+                        pMYKI_TACapping->Weekly.Expiry, pData->DynamicData.currentBusinessDate );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 3, 0 );
+                return  RULE_RESULT_BYPASSED;
+            }
+
+            /*  4.  If the TApp.TPurse.Balance is less than two (2) times the negative
+                    (Tariff.MaximumTPurseBalance) OR if TApp.TPurse.Balance is greater
+                    than two (2) times the Tariff.MaximumTPurseBalance. (Snapshot
+                    Reason Code: TPurseBalanceExcess) */
+            minTPurseBalance    = - ( pData->Tariff.TPurseMaximumBalance * 2 );
+            if ( pMYKI_TAPurseBalance->Balance < minTPurseBalance )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - TAPurseBalance(%d) < Minimum (%d)",
+                        pMYKI_TAPurseBalance->Balance, minTPurseBalance );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 4, 1 );
+                return  RULE_RESULT_BYPASSED;
+            }
+            maxTPurseBalance    = ( pData->Tariff.TPurseMaximumBalance * 2 );
+            if ( pMYKI_TAPurseBalance->Balance > maxTPurseBalance )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - TAPurseBalance(%d) > Maximum (%d)",
+                        pMYKI_TAPurseBalance->Balance, maxTPurseBalance );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 4, 2 );
+                return  RULE_RESULT_BYPASSED;
+            }
+
+            /*  5.  If the TApp.TPurse.Balance is NOT equal to the
+                    TApp.TPurseControl.LastChangeNewBalance. (Snapshot Reason Code:
+                    TPurseBalance) */
+            if ( pMYKI_TAPurseBalance->Balance != pMYKI_TAPurseControl->LastChangeNewBalance )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - TAPurseBalance(%d) != TAPurseControl.LastChangeNewBalance(%d)",
+                        pMYKI_TAPurseBalance->Balance, pMYKI_TAPurseControl->LastChangeNewBalance );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 5, 0 );
+                return  RULE_RESULT_BYPASSED;
+            }
+
+            /*  6.  If TApp.TPurseControl.NextTxSeqNo is NOT equal to
+                    TApp.TPurseControl.LastChangeTxSeqNo +1. (Snapshot Reason Code:
+                    TPurseTxSeqNo) */
+            if ( pMYKI_TAPurseControl->NextTxSeqNo != (U16_t)( pMYKI_TAPurseControl->LastChangeTxSeqNo + 1 ) )
+            {
+                CsErrx( "BR_LLSC_99_1 : Bypassed - TAPurseControl.NextTxSeqNo(%d) != TAPurseControl.LastChangeTxSeqNo(%d) + 1",
+                        pMYKI_TAPurseControl->NextTxSeqNo, (U16_t)( pMYKI_TAPurseControl->LastChangeTxSeqNo + 1 ) );
+                pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_PRECOMMIT_CHECK_FAILED;
+                pData->ReturnedData.bypassCode      = BYPASS_CODE( 99, 1, 6, 0 );
+                return  RULE_RESULT_BYPASSED;
+            }
+        }   /*  end-of-for */
+    }
+
+    /*  PROCESSING */
+    {
+        /*  DONOTHING! */
+    }
+
+    CsDbg( BRLL_RULE, "BR_LLSC_99_1 : Executed" );
+    return RULE_RESULT_EXECUTED;
+}   /* BR_LLSC_99_1( ) */

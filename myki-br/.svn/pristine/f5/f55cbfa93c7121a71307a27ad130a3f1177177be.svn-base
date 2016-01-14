@@ -1,0 +1,294 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MBU
+**  Filename        : BR_VIX_LLSC_20_2.cpp
+**  Author(s)       : An Tran
+**
+**  ID              : BR_VIX_LLSC_20_2
+**
+**  Name            : T-Purse Add Value Reversal
+**
+**  Data Fields     :
+**
+**      1.  TAppLoadLog.TxType
+**      2.  TAppLoadLog.TxSeqNo
+**      3.  TAppLoadLog.ProviderId
+**      4.  TAppLoadLog.TxDateTime
+**      5.  TAppLoadLog.Location
+**      6.  TAppLoadLog.TxValue
+**      7.  TAppLoadLog.NewTPurseBalance
+**      8.  TAppLoadLog.PaymentMethod
+**      9.  TAppPurseControl.LastChangeTxSeqNo
+**      10. TAppPurseBalance.Balance
+**      11. TAppPurseControl.NextSeqNo
+**      12. Dynamic.CurrentDateTime
+**      13. Dynamic.ReverseTxSeqNo
+**      14. Dynamic.TPurseLoadAmount
+**      15. Dynamic.LoadLogTxValue
+**      16. Static.ServiceProviderId
+**
+**  Pre-Conditions  :
+**
+**      1.  The add transaction sequence number to be reversed (13) is the
+**          last add transaction sequence number (2).
+**      2.  The last add transaction type is Multiple ActionLists (21) or
+**          the amount to be reversed (14) is the last add transaction amount (6).
+**      3.  The add transaction sequence number to be reversed (13) is the last
+**          tpurse change transaction sequence number (9), i.e. card balance has
+**          not been changed since last add transaction.
+**
+**  Description     :
+**
+**      1.  Performs TPurseLoad/Reverse transaction.
+**      2.  Modify load log
+**          a.  Definition:
+**              i.  ControlBitmap: Value
+**              ii. If the transaction type is not set then
+**                  1.  Set the transaction type to TPurse usage manual (9),
+**                  2.  Else set the transaction type to Multiple Actionlists (21).
+**              iii.Set TxSeqNo (2) = TAppPurseControl.NextSeqNo (11)
+**              iv. Set ProviderId (3) = current device service provider (16)
+**              v.  Set TxDateTime (4) as current date time (12)
+**              vi. Set Location object (5) to current device location
+**                  (i.e. Entry Point, Route, Stop ID)
+**      b.  Value:
+**              i.  Set TxValue (6) = absolute value of T-Purse load amount
+**              ii. Set NewTPuserBalance (7) = T-Purse balance (10)
+**              iii.Set PaymentMethod (8) = Cash (2)
+**
+**  Post-Conditions :
+**
+**      1.  T-Purse balance is decreased by the specified reversal amount.
+**
+**  Member(s)       :
+**      BR_VIX_LLSC_20_2        [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id$
+**      $HeadURL$
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  27.08.15    ANT   Create
+**    1.01  13.12.15    ANT   Modify   NGBU-981: Added checking for Multiple
+**                                     ActionLists transaction type
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include <LDT.h>
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+/*
+ *      Local Constants and Macros
+ *      --------------------------
+ */
+
+/*
+ *      Local Variables
+ *      ---------------
+ */
+
+/*
+ *      Global Variables
+ *      ----------------
+ */
+
+/*==========================================================================*
+**
+**  BR_VIX_LLSC_20_2
+**
+**  Description     :
+**      Implements business rule BR_VIX_LLSC_20_2.
+**
+**  Parameters      :
+**      pData               [I/O]   BR context data
+**
+**  Returns         :
+**      RULE_RESULT_EXECUTED
+**      RULE_RESULT_BYPASSED
+**      RULE_RESULT_ERROR
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+RuleResult_e    BR_VIX_LLSC_20_2( MYKI_BR_ContextData_t *pData )
+{
+    #define LAST_TRASACTION_LOG     0
+
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TALoadLogRecord_t         *pMYKI_TALoadLogRecord       = NULL;
+    TAppLoadLog_t                  *pAppLoadLog                 = NULL;
+    int                             nResult                     = 0;
+
+    CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : Start (T-Purse Add Value Reversal)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_VIX_LLSC_20_2 : Invalid argument(s)" );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAControlGet( &pMYKI_TAControl ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_2 : MYKI_CS_TAControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseBalanceGet( &pMYKI_TAPurseBalance ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_2 : MYKI_CS_TAPurseBalanceGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TAPurseControlGet( &pMYKI_TAPurseControl ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_2 : MYKI_CS_TAPurseControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_TALoadLogRecordsGet( 1, &pMYKI_TALoadLogRecordList ) ) < 0 )
+    {
+        CsErrx( "BR_VIX_LLSC_20_2 : MYKI_CS_TALoadLogRecordsGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        /*  1.  The add transaction sequence number to be reversed (13) is the last
+                add transaction sequence number (2). */
+        if ( pMYKI_TALoadLogRecordList->NumberOfRecords == 0 )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : no TALoadLogRecord" );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 2, 1, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED;
+            return  RULE_RESULT_BYPASSED;
+        }
+        pMYKI_TALoadLogRecord   = &pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ LAST_TRASACTION_LOG ];
+        if ( pData->DynamicData.reverseTxSeqNo != pMYKI_TALoadLogRecord->TxSeqNo )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : reverse sequence number (%d) is not last add transaction (%d)",
+                    pData->DynamicData.reverseTxSeqNo, pMYKI_TALoadLogRecord->TxSeqNo );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 2, 2, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  2.  The last add transaction type is Multiple ActionLists (21) or
+                the amount to be reversed (14) is the last add transaction amount (6). */
+        if ( pData->DynamicData.tpurseLoadAmount           != (Currency_t)pMYKI_TALoadLogRecord->TxValue &&
+             MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST != pMYKI_TALoadLogRecord->TxType              )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : reverse amount (%d) is not last add transaction amount (%d)",
+                    pData->DynamicData.tpurseLoadAmount, (Currency_t)pMYKI_TALoadLogRecord->TxValue );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 2, 3, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED;
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  3.  The add transaction sequence number to be reversed (13) is the last 
+                tpurse change transaction sequence number (9), i.e. card balance has 
+                not been changed since last add transaction. */
+        if ( pData->DynamicData.reverseTxSeqNo != pMYKI_TAPurseControl->LastChangeTxSeqNo ) 
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : reverse sequence number (%d) is not last transaction to modify tpurse (%d)",
+                    pData->DynamicData.reverseTxSeqNo, pMYKI_TAPurseControl->LastChangeTxSeqNo );
+            pData->ReturnedData.bypassCode      = BYPASS_CODE( 20, 2, 4, 0 );
+            pData->ReturnedData.rejectReason    = MYKI_BR_REJECT_REASON_TPURSE_MODIFIED;
+            return  RULE_RESULT_BYPASSED;
+        }
+    }
+
+    /*  PROCESSING */
+    {
+        /*  1.  Performs TPurseLoad/Reverse transaction. */
+        if ( myki_br_ldt_PurseLoad_Reverse( pData, pData->DynamicData.tpurseLoadAmount ) < 0 )
+        {
+            CsErrx( "BR_VIX_LLSC_20_2 : myki_br_ldt_PurseLoad_Reverse() failed" );
+            return  RULE_RESULT_ERROR;
+        }
+
+        /*  2.  Modify load log */
+        {
+            pData->InternalData.IsLoadLogUpdated        = TRUE;
+            pAppLoadLog                                 = &pData->InternalData.LoadLogData;
+
+            /*  a. Definition: */
+            {
+                /*  i.  ControlBitmap: Value (Done by framework) */
+                /*  ii. If the transaction type is not set then */
+                if ( pAppLoadLog->transactionType == MYKI_BR_TRANSACTION_TYPE_NONE )
+                {
+                    /*  1.  Set the transaction type to TPurse load reversal (6), */
+                    pAppLoadLog->transactionType        = MYKI_BR_TRANSACTION_TYPE_REVERSE_VALUE;
+                }
+                else
+                {
+                    /*  2.  Else set the transaction type to Multiple Actionlists (21). */
+                    pAppLoadLog->transactionType        = MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST;
+                }
+
+                /*  iii.    Set TxSeqNo (2) = TAppPurseControl.NextSeqNo (11) */
+                pAppLoadLog->transactionSequenceNumber  = ( pMYKI_TAPurseControl->NextTxSeqNo - 1 );
+
+                /*  iv. Set ProviderId (3) = current device service provider (16) (Done by framework)
+                    v.  Set TxDateTime (4) as current date time (12) (Done by framework)
+                    vi. Set Location object (5) to current device location (i.e. Entry Point, Route, Stop ID) (Done by framework) */
+            }
+
+            /*  b.  Value: */
+            {
+                /*  i.  Set TxValue (6) = absolute value of T-Purse load amount */
+                pAppLoadLog->isTransactionValueSet      = TRUE;
+                pAppLoadLog->transactionValue           = (U32_t)pData->DynamicData.tpurseLoadAmount;
+
+                /*  iii.Set NewTPuserBalance (7) = T-Purse balance (10) */
+                pAppLoadLog->isNewTPurseBalanceSet      = TRUE;
+                pAppLoadLog->newTPurseBalance           = pMYKI_TAPurseBalance->Balance;
+
+                /*  iv. Set PaymentMethod (8) = Cash (2) */
+                pAppLoadLog->isPaymentMethodSet         = TRUE;
+                pAppLoadLog->paymentMethod              = TAPP_USAGE_LOG_PAYMENT_METHOD_CASH;
+            }
+        }
+    }
+
+    /*  Post-Conditions */
+    {
+        pData->ReturnedData.acceptReason        = MYKI_BR_ACCEPT_TPURSE_DEBITED;
+        pData->ReturnedData.topupAmount         = pData->DynamicData.tpurseLoadAmount;
+        pData->ReturnedData.remainingBalance    = pMYKI_TAPurseBalance->Balance;
+        pData->ReturnedData.txnSeqNo            = pAppLoadLog->transactionSequenceNumber;
+    }
+
+    CsDbg( BRLL_RULE, "BR_VIX_LLSC_20_2 : Executed" );
+    return  RULE_RESULT_EXECUTED;
+}   /* BR_VIX_LLSC_20_2( ) */

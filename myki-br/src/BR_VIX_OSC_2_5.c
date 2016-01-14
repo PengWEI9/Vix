@@ -1,0 +1,108 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2014                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : BR_VIX_OSC_2_5
+**  Filename        : BR_VIX_OSC_2_5.c
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief      BR_VIX_OSC_2_5 (Check Driver Role) business rule.
+**      @section    Section_1 Data Fields
+**                  1.  OAppRoles.Role[n].Type
+**                  2.  OAppRoles.Role[n].Profile
+**                  3.  StaticData.StaffRoles
+**      @section    Section_2 Pre-Conditions
+**                  -#  One or more operator type (1) / profile (2) pairs
+**                      is/are type / profile of a Driver role.
+**      @section    Section_3 Description
+**      @section    Section_4 Post-Conditions
+**                  -#  Operator card is a Driver card.
+*/
+/*  Member(s)       :
+**      BR_VIX_OSC_2_5          [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: BR_VIX_OSC_2_5.c 80137 2015-11-03 02:46:50Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/src/BR_VIX_OSC_2_5.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  30.10.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+    /**
+     *  @brief  BR_VIX_OSC_2_5 business rule.
+     *  @param  pData business rule context data.
+     *  @return RULE_RESULT_EXECUTED if business rule executed,\n
+     *          RULE_RESULT_BYPASSED if business rule bypassed, or\n
+     *          RULE_RESULT_ERROR if unexpected error occurred while executing
+     *          business rule.
+     */
+RuleResult_e
+BR_VIX_OSC_2_5( MYKI_BR_ContextData_t *pData )
+{
+    int                             nResult                     = 0;
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_2_5 : Start (Check Driver Role)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_VIX_OSC_2_5 : Invalid parameter" );
+        return  RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        /*  1.  One or more operator role type (1) / profile (2) pairs is/are
+                type / profile of a Driver role. */
+        nResult = myki_br_isOfRole( pData, OperatorType_DRIVER );
+        if ( nResult < 0 )
+        {
+            return  RULE_RESULT_ERROR;
+        }
+        else
+        if ( nResult == 0 )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_2_5 : Bypassed - not a DRIVER card" );
+            pData->ReturnedData.bypassCode  = BYPASS_CODE( 2, 5, 1, 0 );
+            return  RULE_RESULT_BYPASSED;
+        }
+    }
+
+    /*  PROCESSING */
+    {
+    }
+
+    /*  POST-CONDITIONS */
+    {
+        /*  1.  Operator card is a Driver card. */
+        CsDbg( BRLL_RULE, "BR_VIX_OSC_2_5 : Is a DRIVER card" );
+    }
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_2_5 : Executed" );
+
+    return RULE_RESULT_EXECUTED;
+}   /*  BR_VIX_OSC_2_5( ) */

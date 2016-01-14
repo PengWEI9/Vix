@@ -1,0 +1,597 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MBU
+**  Filename        : test_BR_VIX_LLSC_20_2.c
+**  Author(s)       : An Tran
+**
+**  Description     :
+**      Implements BR_VIX_LLSC_20_2 business rule unit-tests.
+**
+**  Function(s)     :
+**      test_BR_VIX_LLSC_20_2_XXX   [Public]    unit-test functions
+**
+**  Information     :
+**   Compiler(s)    : ANSI C
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: test_BR_VIX_LLSC_20_2.c 86592 2015-12-14 02:22:00Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/test/test_BR_VIX_LLSC_20_2.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  27.08.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include    <string.h>
+#include    <cs.h>
+#include    <myki_cardservices.h>
+#include    <myki_cdd_enums.h>
+#include    <myki_br.h>
+#include    <myki_br_rules.h>
+#include    <myki_br_context_data.h>
+
+#include    "test_common.h"
+
+/*==========================================================================*
+**
+**  test_BR_VIX_LLSC_20_2_001a
+**
+**  Description     :
+**      Unit-test BYPASSED conditions.
+**
+**  Parameters      :
+**      pData           [I/O]   BR context data
+**
+**  Returns         :
+**      TRUE                    test passed
+**      FALSE                   test failed
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+int test_BR_VIX_LLSC_20_2_001a( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             NextTxSeqNo                 = 5;
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                         = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                   = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                               = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                      = 0;    /*  No load log record */
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->Tariff.addValueEnabled                                   = 1;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  TPurse top-up amount is not entered */
+        {
+            pData->DynamicData.tpurseLoadAmount                             = 0;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 20, 2, 1, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == Balance );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.rejectReason == MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_VIX_LLSC_20_2_001a( ) */
+
+int test_BR_VIX_LLSC_20_2_001b( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             TxSeqNo                     = 4;
+    int                             NextTxSeqNo                 = ( TxSeqNo + 1 );
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                         = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                   = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                               = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                      = 1;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxSeqNo    = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxType     = MYKI_BR_TRANSACTION_TYPE_TPURSE_LOAD_VALUE;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->Tariff.addValueEnabled                                   = 1;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  TPurse top-up amount is not entered */
+        {
+            pData->DynamicData.reverseTxSeqNo                               = ( TxSeqNo - 1 );  /*  != last add transaction sequence number */
+            pData->DynamicData.tpurseLoadAmount                             = 0;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 20, 2, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == Balance );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.rejectReason == MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_VIX_LLSC_20_2_001b( ) */
+
+int test_BR_VIX_LLSC_20_2_001c( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             TxValue                     = 150;
+    int                             TxSeqNo                     = 4;
+    int                             NextTxSeqNo                 = ( TxSeqNo + 1 );
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                         = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                   = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                               = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                      = 1;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxSeqNo    = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxValue    = TxValue;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxType     = MYKI_BR_TRANSACTION_TYPE_TPURSE_LOAD_VALUE;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->Tariff.addValueEnabled                                   = 1;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  TPurse top-up amount is not entered */
+        {
+            pData->DynamicData.reverseTxSeqNo                               = TxSeqNo;
+            pData->DynamicData.tpurseLoadAmount                             = ( TxValue + 1 );  /*  != last add value transaction amount */
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 20, 2, 3, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == Balance );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.rejectReason == MYKI_BR_REJECT_REASON_REVERSAL_NOT_ALLOWED );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_VIX_LLSC_20_2_001c( ) */
+
+int test_BR_VIX_LLSC_20_2_001d( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             TxValue                     = 150;
+    int                             TxSeqNo                     = 4;
+    int                             NextTxSeqNo                 = ( TxSeqNo + 2 );
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                             = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                             = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                              = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                       = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                                   = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                          = 1;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxSeqNo        = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxValue        = TxValue;
+            pMYKI_TAUsageLogRecordList->NumberOfRecords                         = 1;
+            pMYKI_TAPurseControl->LastChangeTxSeqNo                             = (TxSeqNo + 1);
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxType         = MYKI_BR_TRANSACTION_TYPE_TPURSE_LOAD_VALUE;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                     = EntryPointId;
+            pData->DynamicData.lineId                                           = LineId;
+            pData->DynamicData.stopId                                           = StopId;
+            pData->Tariff.addValueEnabled                                       = 1;
+            pData->StaticData.serviceProviderId                                 = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  TPurse top-up amount is not entered */
+        {
+            pData->DynamicData.reverseTxSeqNo                                   = TxSeqNo;
+            pData->DynamicData.tpurseLoadAmount                                 = TxValue;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 20, 2, 4, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == Balance );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.rejectReason == MYKI_BR_REJECT_REASON_TPURSE_MODIFIED );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_VIX_LLSC_20_2_001d( ) */
+
+/*==========================================================================*
+**
+**  test_BR_VIX_LLSC_20_2_002a
+**
+**  Description     :
+**      Unit-test EXECUTED conditions.
+**
+**  Parameters      :
+**      pData           [I/O]   BR context data
+**
+**  Returns         :
+**      TRUE                    test passed
+**      FALSE                   test failed
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+int test_BR_VIX_LLSC_20_2_002a( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             TxValue                     = 150;
+    int                             TxSeqNo                     = 4;
+    int                             NextTxSeqNo                 = ( TxSeqNo + 1 );
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                             = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                             = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                              = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                       = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                                   = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                          = 1;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxSeqNo        = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxValue        = TxValue;
+            pMYKI_TAUsageLogRecordList->NumberOfRecords                         = 1;
+            pMYKI_TAPurseControl->LastChangeTxSeqNo                             = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxType         = MYKI_BR_TRANSACTION_TYPE_TPURSE_LOAD_VALUE;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                     = EntryPointId;
+            pData->DynamicData.lineId                                           = LineId;
+            pData->DynamicData.stopId                                           = StopId;
+            pData->Tariff.addValueEnabled                                       = 1;
+            pData->StaticData.serviceProviderId                                 = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Reversal details */
+        {
+            pData->DynamicData.reverseTxSeqNo                                   = TxSeqNo;
+            pData->DynamicData.tpurseLoadAmount                                 = TxValue;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_EXECUTED );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == ( Balance - TxValue ) );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.acceptReason == MYKI_BR_ACCEPT_TPURSE_DEBITED );
+
+        return  UT_Result( );
+    }
+}   /* test_BR_VIX_LLSC_20_2_002a( ) */
+
+int test_BR_VIX_LLSC_20_2_002b( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t               *pMYKI_CAControl             = NULL;
+    MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
+    MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
+    MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
+    MYKI_TALoadLogRecordList_t     *pMYKI_TALoadLogRecordList   = NULL;
+    MYKI_TAUsageLogRecordList_t    *pMYKI_TAUsageLogRecordList  = NULL;
+    int                             EntryPointId                = 53;
+    int                             LineId                      = 66;
+    int                             StopId                      = 79;
+    int                             ServiceProviderId           = 100;
+    int                             Balance                     = 1000;
+    int                             ActionlistValue             = 500;
+    int                             TxValue                     = 150;
+    int                             TxSeqNo                     = 4;
+    int                             NextTxSeqNo                 = ( TxSeqNo + 1 );
+    RuleResult_e                    RuleResult                  = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(              &pMYKI_CAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(              &pMYKI_TAControl            ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet(         &pMYKI_TAPurseBalance       ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet(         &pMYKI_TAPurseControl       ) != MYKI_CS_OK ||
+         MYKI_CS_TALoadLogRecordsGet(   1,  &pMYKI_TALoadLogRecordList  ) != MYKI_CS_OK ||
+         MYKI_CS_TAUsageLogRecordsGet(  1,  &pMYKI_TAUsageLogRecordList ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_CAControl->Status                                             = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                             = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                              = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                       = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                                   = NextTxSeqNo;
+            pMYKI_TALoadLogRecordList->NumberOfRecords                          = 1;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxSeqNo        = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxValue        = ActionlistValue + TxValue;
+            pMYKI_TAUsageLogRecordList->NumberOfRecords                         = 1;
+            pMYKI_TAPurseControl->LastChangeTxSeqNo                             = TxSeqNo;
+            pMYKI_TALoadLogRecordList->MYKI_TALoadLogRecord[ 0 ].TxType         = MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                     = EntryPointId;
+            pData->DynamicData.lineId                                           = LineId;
+            pData->DynamicData.stopId                                           = StopId;
+            pData->Tariff.addValueEnabled                                       = 1;
+            pData->StaticData.serviceProviderId                                 = ServiceProviderId;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Reversal details */
+        {
+            pData->DynamicData.reverseTxSeqNo                                   = TxSeqNo;
+            pData->DynamicData.tpurseLoadAmount                                 = TxValue;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_20_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_EXECUTED );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == ( Balance - TxValue ) );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.acceptReason == MYKI_BR_ACCEPT_TPURSE_DEBITED );
+
+        return  UT_Result( );
+    }
+}   /* test_BR_VIX_LLSC_20_2_002b( ) */

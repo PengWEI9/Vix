@@ -1,0 +1,628 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : MBU
+**  Filename        : test_BR_LLSC_2_11.c
+**  Author(s)       : An Tran
+**
+**  Description     :
+**      Implements BR_LLSC_2_11 business rule unit-tests.
+**
+**  Function(s)     :
+**      test_BR_LLSC_2_11_XXX       [public]    unit-test functions
+**
+**  Information     :
+**   Compiler(s)    : ANSI C
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: test_BR_LLSC_2_11.c 63097 2015-05-20 03:16:41Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/test/test_BR_LLSC_2_11.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  20.05.15    ANT   Create
+**
+**===========================================================================*/
+
+/*
+ *      Options
+ *      -------
+ */
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include <myki_cdd_enums.h>
+#include <myki_br.h>
+#include <myki_br_rules.h>
+#include <myki_br_context_data.h>
+
+#include "test_common.h"
+
+/*==========================================================================*
+**
+**  test_BR_LLSC_2_11_001a
+**  test_BR_LLSC_2_11_001b
+**  test_BR_LLSC_2_11_001c
+**  test_BR_LLSC_2_11_001d
+**  test_BR_LLSC_2_11_001e
+**
+**  Description     :
+**      Unit-test BYPASSED conditions.
+**
+**  Parameters      :
+**      pData           [I/O]   BR context data
+**
+**  Returns         :
+**      TRUE                    test passed
+**      FALSE                   test failed
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+int test_BR_LLSC_2_11_001a( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     ActionSeqNo             = 12;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = ActionSeqNo;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = 0;    /*  != ACTION_TAPP_UPDATE_UNBLOCK */
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = ( ActionSeqNo + 1 );
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 2, 11, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == ActionSeqNo );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure transaction log is unchanged */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == FALSE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_NONE );
+
+        /*  Make sure BR context data is unchanged */
+        UT_Assert( pData->ReturnedData.actionApplied == FALSE );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_LLSC_2_11_001a( ) */
+
+int test_BR_LLSC_2_11_001b( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     ActionSeqNo             = 12;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = ActionSeqNo;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = ACTION_TAPP_UPDATE_UNBLOCK;
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = 0;    /*  < 1 */
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 2, 11, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == ActionSeqNo );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure transaction log is unchanged */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == FALSE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_NONE );
+
+        /*  Make sure BR context data is unchanged */
+        UT_Assert( pData->ReturnedData.actionApplied == FALSE );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_LLSC_2_11_001b( ) */
+
+int test_BR_LLSC_2_11_001c( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     ActionSeqNo             = 12;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = ActionSeqNo;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = ACTION_TAPP_UPDATE_UNBLOCK;
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = 16;   /*  > 15 */
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 2, 11, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == ActionSeqNo );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure transaction log is unchanged */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == FALSE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_NONE );
+
+        /*  Make sure BR context data is unchanged */
+        UT_Assert( pData->ReturnedData.actionApplied == FALSE );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_LLSC_2_11_001c( ) */
+
+int test_BR_LLSC_2_11_001d( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = 15;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = ACTION_TAPP_UPDATE_UNBLOCK;
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = 2;    /*  != 1 */
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 2, 11, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == 15 );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure transaction log is unchanged */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == FALSE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_NONE );
+
+        /*  Make sure BR context data is unchanged */
+        UT_Assert( pData->ReturnedData.actionApplied == FALSE );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_LLSC_2_11_001d( ) */
+
+int test_BR_LLSC_2_11_001e( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     ActionSeqNo             = 12;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = ActionSeqNo;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = ACTION_TAPP_UPDATE_UNBLOCK;
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = ActionSeqNo + 2;  /*  != TAPurseControl.ActionSeqNo */
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_BYPASSED );
+        UT_Assert( pData->ReturnedData.bypassCode == BYPASS_CODE( 2, 11, 2, 0 ) );
+
+        /*  Make sure card image is unchanged */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == ActionSeqNo );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == NextTxSeqNo );
+
+        /*  Make sure transaction log is unchanged */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == FALSE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_NONE );
+
+        /*  Make sure BR context data is unchanged */
+        UT_Assert( pData->ReturnedData.actionApplied == FALSE );
+
+        return  UT_Result( );
+    }
+}   /*  test_BR_LLSC_2_11_001e( ) */
+
+/*==========================================================================*
+**
+**  test_BR_LLSC_2_11_002
+**
+**  Description     :
+**      Unit-test EXECUTED conditions.
+**
+**  Parameters      :
+**      pData           [I/O]   BR context data
+**
+**  Returns         :
+**      TRUE                    test passed
+**      FALSE                   test failed
+**
+**  Notes           :
+**
+**
+**==========================================================================*/
+
+int test_BR_LLSC_2_11_002( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_CAControl_t       *pCAControl              = NULL;
+    int                     ActionSeqNo             = 12;
+    int                     NextTxSeqNo             = 42;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    int                     ActionServiceProviderId = 52;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL )
+    {
+        return FALSE;
+    }   /* end-of-if */
+
+    if ( MYKI_CS_CAControlGet( &pCAControl ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    if ( MYKI_CS_TAControlGet( &pMYKI_TAControl ) < 0 || pMYKI_TAControl == NULL )
+    {
+        return FALSE;
+    }   /* end-of-if */
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            pMYKI_TAControl->ActionSeqNo                                    = ActionSeqNo;
+            pMYKI_TAControl->NextTxSeqNo                                    = NextTxSeqNo;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_BLOCKED;
+            pCAControl->Status                                              = CARD_CONTROL_STATUS_ACTIVATED;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+        }
+
+        /*  Transaction log */
+        {
+            pData->InternalData.IsUsageLogUpdated                           = FALSE;
+            pData->InternalData.UsageLogData.transactionType                = MYKI_BR_TRANSACTION_TYPE_NONE;
+        }
+    }
+
+    /*  WHEN */
+    {
+        /*  Actionlist record */
+        {
+            pData->ActionList.type                                          = ACTION_TAPP_UPDATE_UNBLOCK;
+            pData->ActionList.actionlist.tAppUpdate.isActionSequenceNoSet   = TRUE;
+            pData->ActionList.actionlist.tAppUpdate.actionSequenceNo        = ActionSeqNo + 1;
+            pData->ActionList.actionlist.tAppUpdate.serviceProviderId       = ActionServiceProviderId;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_LLSC_2_11( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is executed */
+        UT_Assert( RuleResult == RULE_RESULT_EXECUTED );
+
+        /*  Make sure card image is correct */
+        UT_Assert( pMYKI_TAControl->ActionSeqNo == ( ActionSeqNo + 1 ) );
+        UT_Assert( pMYKI_TAControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
+
+        /*  Make sure transaction log is correct */
+        UT_Assert( pData->InternalData.IsUsageLogUpdated == TRUE );
+        UT_Assert( pData->InternalData.UsageLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_APPLICATION_UNBLOCK );
+        UT_Assert( pData->InternalData.UsageLogData.providerId == ActionServiceProviderId );
+
+        /*  Make sure BR context data is correct */
+        UT_Assert( pData->ReturnedData.actionApplied == TRUE );
+
+        return  UT_Result( );
+    }
+}   /* test_BR_LLSC_2_11_002( ) */

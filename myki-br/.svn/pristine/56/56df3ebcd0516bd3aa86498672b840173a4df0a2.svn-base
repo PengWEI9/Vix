@@ -1,0 +1,191 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2014                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : BR_VIX_OSC_3_1
+**  Filename        : BR_VIX_OSC_3_1.c
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief      BR_VIX_OSC_3_1 (Retrieve Shift Data) business rule.
+**      @section    Section_1 Data Fields
+**                  1.  OAppShiftDataControl.Status
+**                  2.  OAppShiftDataControl.CloseTime
+**                  3.  OAppShiftDataRecord
+**                  4.  DynamicData.ShiftData
+**                  5.  DynamicData.ShiftData.ShiftPortionStatus
+**      @section    Section_2 Pre-Conditions
+**                  -#  Shift data(4) buffer provided.
+**                  -#  Shift data status (1) is "Suspended" or "Closed".
+**      @section    Section_3 Description
+**                  -#  Perform OAShiftDataControlUpdate/None,
+**                      -#  Shift data status (1) set to "Activated".
+**                      -#  Set shift close time (2) to zero.
+**                  -#  Set Driver shift data (4) with shift data (3) retrieved from
+**                      the Driver card.
+**                  -#  Set shift portion status (5) to "Brought-forward".
+**      @section    Section_4 Post-Conditions
+**                  -#  Driver shift data brought forward.
+*/
+/*  Member(s)       :
+**      BR_VIX_OSC_3_1          [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id$
+**      $HeadURL$
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  05.10.15    ANT   Create
+**    1.01  27.11.15    ANT   Modify   NGBU-897: Rectified ShiftId as binary
+**
+**===========================================================================*/
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+    /**
+     *  @brief  BR_VIX_OSC_3_1 business rule.
+     *  @param  pData business rule context data.
+     *  @return RULE_RESULT_EXECUTED if business rule executed,\n
+     *          RULE_RESULT_BYPASSED if business rule bypassed, or\n
+     *          RULE_RESULT_ERROR if unexpected error occurred while executing
+     *          business rule.
+     */
+RuleResult_e
+BR_VIX_OSC_3_1( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_OAShiftDataControl_t      *pMYKI_OAShiftDataControl    = NULL;
+    MYKI_OAShiftDataRecordList_t   *pMYKI_OAShiftDataRecordList = NULL;
+    int                             nShiftDataRecords           = 0;
+    int                             nResult                     = 0;
+    int                             i                           = 0;
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_3_1 : Start (Retrieve Shift Data)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_VIX_OSC_3_1 : Invalid parameter" );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_OAShiftDataControlGet( &pMYKI_OAShiftDataControl ) ) != MYKI_CS_OK )
+    {
+        CsErrx( "BR_VIX_OSC_3_1 : MYKI_CS_OAShiftDataControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        /*  1.  Shift data(3) buffer provided. */
+        if ( pData->DynamicData.pShiftData == NULL )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_3_1 : Bypassed - Shift data buffer not provided" );
+            pData->ReturnedData.bypassCode  = BYPASS_CODE( 3, 1, 1, 0 );
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  2.  Shift data status (1) is "Suspended" or "Closed". */
+        if ( pMYKI_OAShiftDataControl->Status != OAPP_SHIFT_DATA_STATUS_SUSPENDED &&
+             pMYKI_OAShiftDataControl->Status != OAPP_SHIFT_DATA_STATUS_CLOSED )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_3_1 : Bypassed - Shift data status (%d) not 'Suspended' nor 'Closed'",
+                    pMYKI_OAShiftDataControl->Status );
+            pData->ReturnedData.bypassCode  = BYPASS_CODE( 3, 1, 2, 0 );
+            return  RULE_RESULT_BYPASSED;
+        }
+    }
+
+    /*  PROCESSING */
+    {
+        MYKI_BR_ShiftData_t        *pShiftData  = pData->DynamicData.pShiftData;
+        int                         nShiftId    = myki_br_GetShiftId( pMYKI_OAShiftDataControl );
+
+        /*  1.  Perform OAShiftDataControlUpdate/None,
+                a.  Shift data status (1) set to "Activated".
+                b.  Set shift close time (2) to zero. */
+        pShiftData->shiftStatus         = OAPP_SHIFT_DATA_STATUS_ACTIVATED;
+        pShiftData->shiftId             = nShiftId;
+        pShiftData->shiftStartTime      = pMYKI_OAShiftDataControl->StartTime;
+        pShiftData->shiftEndTime        = TIME_NOT_SET;
+        if ( ( nResult = myki_br_ldt_OAppShiftControlUpdate( pData, pMYKI_OAShiftDataControl->ActiveRecordCount ) ) < 0 )
+        {
+            CsErrx( "BR_VIX_OSC_3_2 : myki_br_ldt_OAppShiftControlUpdate() failed(%d)", nResult );
+            return  RULE_RESULT_ERROR;
+        }
+
+        /*  2.  Set Driver shift data (4) with shift data (3) retrieved from the Driver card. */
+        pShiftData->shiftStatus     = (OAppShiftDataStatus_t)pMYKI_OAShiftDataControl->Status;
+        pShiftData->shiftId         = nShiftId;
+        pShiftData->shiftStartTime  = pMYKI_OAShiftDataControl->StartTime;
+        pShiftData->shiftEndTime    = pMYKI_OAShiftDataControl->CloseTime;
+
+        if ( ( nShiftDataRecords = pMYKI_OAShiftDataControl->ActiveRecordCount ) > 0 )
+        {
+            if ( ( nResult = MYKI_CS_OAShiftDataRecordsGet( nShiftDataRecords, &pMYKI_OAShiftDataRecordList ) ) != MYKI_CS_OK )
+            {
+                CsErrx( "BR_VIX_OSC_3_1 : MYKI_CS_OAShiftDataRecordsGet() failed (%d)", nResult );
+                return  RULE_RESULT_ERROR;
+            }
+            if ( pMYKI_OAShiftDataRecordList->NumberOfRecords < nShiftDataRecords )
+            {
+                CsErrx( "BR_VIX_OSC_3_1 : MYKI_CS_OAShiftDataRecordsGet() returned %d out of %d records requested",
+                        pMYKI_OAShiftDataRecordList->NumberOfRecords, nShiftDataRecords );
+                return  RULE_RESULT_ERROR;
+            }
+
+            for ( i = 0; i < nShiftDataRecords; i++ )
+            {
+                MYKI_OAShiftDataRecord_t   *pMYKI_OAShiftDataRecord = &pMYKI_OAShiftDataRecordList->MYKI_ShiftDataRecord[ i ];
+                U8_t                        methodOfPayment         = pMYKI_OAShiftDataRecord->RecordType;
+
+                if ( methodOfPayment < PAYMENT_METHOD_MAX )
+                {
+                    memcpy( &pShiftData->shiftTotals[ methodOfPayment ], pMYKI_OAShiftDataRecord, sizeof( MYKI_OAShiftDataRecord_t ) );
+                }
+                else
+                {
+                    CsWarnx( "BR_VIX_OSC_3_1 : Invalid shift data record type (%d)", methodOfPayment );
+                }
+            }   /*  end-of-for */
+        }
+        else
+        {
+            pShiftData->shiftTotalsTPurse.RecordType        = PAYMENT_METHOD_TPURSE;
+            pShiftData->shiftTotalsTPurse.SalesCount        = 0;
+            pShiftData->shiftTotalsTPurse.SalesValue        = 0;
+            pShiftData->shiftTotalsTPurse.ReversalsCount    = 0;
+            pShiftData->shiftTotalsTPurse.ReversalsValue    = 0;
+            pShiftData->shiftTotalsCash.RecordType          = PAYMENT_METHOD_CASH;
+            pShiftData->shiftTotalsCash.SalesCount          = 0;
+            pShiftData->shiftTotalsCash.SalesValue          = 0;
+            pShiftData->shiftTotalsCash.ReversalsCount      = 0;
+            pShiftData->shiftTotalsCash.ReversalsValue      = 0;
+        }   /*  end-of-if */
+
+        /*  3.  Set shift portion status (5) to "Brought-forward". */
+        pShiftData->shiftPortionStatus                  = SHIFT_PORTION_BROUGHT_FORWARD;
+    }
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_3_1 : Executed" );
+
+    return RULE_RESULT_EXECUTED;
+}   /*  BR_VIX_OSC_3_1( ) */

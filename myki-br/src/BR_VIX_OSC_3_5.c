@@ -1,0 +1,162 @@
+/* -*- mode: c; tabs: 4; -*- */
+/*=============================================================================
+**
+**    Vix Technology                   Licensed software
+**    (C) 2015                         All rights reserved
+**
+**=============================================================================
+**
+**  Project/Product : NGBU
+**  Filename        : BR_VIX_OSC_3_5.c
+**  Author(s)       : An Tran
+**
+**  Description     :
+*/
+/**     @file
+**      @brief      BR_VIX_OSC_3_5 (Set Shift Portion Out-Of-Balance) business rule
+**      @section    Section_1 Data Fields
+**                  1.  OAppShiftDataControl.Status
+**                  2.  OAppShiftDataControl.ShiftId
+**                  3.  DynamicData.ShiftData
+**                  4.  DynamicData.ShiftData.ShiftPortionStatus
+**      @section    Section_2 Pre-conditions
+**                  -#  Shift data buffer (3) is provided.
+**                  -#  Shift data status (1) is "Activated".
+**      @section    Section_3 Description
+**                  -#  Perform OAppShiftDataControlUpdate/None,
+**                      -#  Set shift data status (1) to "Activated".
+**                      -#  Set shift identification (2) to zero.
+**                  -#  Reset Driver shift data (3).
+**                  -#  Set shift portion status (4) to "Out-of-Balance".
+**      @section    Section_4 Post-conditions
+**                  -#  Shift portion is reset.
+**                  -#  Driver shift portion out-of-balance.
+*/
+/*  Member(s)       :
+**      BR_VIX_OSC_3_5          [public]    business rule
+**
+**  Information     :
+**   Compiler(s)    : C++
+**   Target(s)      : Independent
+**
+**  Subversion      :
+**      $Id: BR_VIX_OSC_3_5.c 88449 2016-01-07 00:32:47Z atran $
+**      $HeadURL: https://auperasvn01.aupera.erggroup.com/svn/DPG_SWBase/myki-br/trunk/src/BR_VIX_OSC_3_5.c $
+**
+**  History         :
+**   Vers.  Date        Aut.  Type     Description
+**   -----  ----------  ----  -------  ----------------------------------------
+**    1.00  29.10.15    ANT   Create
+**    1.01  27.11.15    ANT   Modify   NGBU-897: Rectified ShiftId as binary
+**
+**===========================================================================*/
+
+/*
+ *      Includes
+ *      --------
+ */
+
+#include <cs.h>
+#include <myki_cardservices.h>
+#include "myki_br_rules.h"
+#include "BR_Common.h"
+
+    /**
+     *  @brief  BR_VIX_OSC_3_5 business rule.
+     *  @param  pData business rule context data.
+     *  @return RULE_RESULT_EXECUTED if business rule executed,\n
+     *          RULE_RESULT_BYPASSED if business rule bypassed, or\n
+     *          RULE_RESULT_ERROR if unexpected error occurred while executing
+     *          business rule.
+     */
+RuleResult_e
+BR_VIX_OSC_3_5( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_OAShiftDataControl_t      *pMYKI_OAShiftDataControl    = NULL;
+    MYKI_BR_ShiftData_t            *pShiftData                  = NULL;
+    int                             nResult                     = 0;
+    int                             nShiftId                    = 0;
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_3_5 : Start (Set Shift Portion Out-Of-Balance)" );
+
+    if ( pData == NULL )
+    {
+        CsErrx( "BR_VIX_OSC_3_5 : Invalid parameter" );
+        return  RULE_RESULT_ERROR;
+    }
+
+    if ( ( nResult = MYKI_CS_OAShiftDataControlGet( &pMYKI_OAShiftDataControl ) ) != MYKI_CS_OK )
+    {
+        CsErrx( "BR_VIX_OSC_3_5 : MYKI_CS_OAShiftDataControlGet() failed (%d)", nResult );
+        return  RULE_RESULT_ERROR;
+    }
+
+    /*  PRE-CONDITIONS */
+    {
+        /*  1.  Shift data buffer (3) is provided */
+        if ( ( pShiftData = pData->DynamicData.pShiftData ) == NULL )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_3_5 : Bypassed - Shift data buffer not provided" );
+            pData->ReturnedData.bypassCode  = BYPASS_CODE( 3, 5, 1, 0 );
+            return  RULE_RESULT_BYPASSED;
+        }
+
+        /*  2.  The shift data status (1) is "Activated", */
+        if ( pMYKI_OAShiftDataControl->Status != OAPP_SHIFT_DATA_STATUS_ACTIVATED )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_3_5 : Bypassed - OAppShiftDataControl.Status(%d) != OAPP_SHIFT_DATA_STATUS_ACTIVATED",
+                    pMYKI_OAShiftDataControl->Status );
+            pData->ReturnedData.bypassCode  = BYPASS_CODE( 3, 5, 2, 0 );
+            return  RULE_RESULT_BYPASSED;
+        }
+    }
+
+    /*  PROCESSING */
+    {
+        /*  1.  Perform OAppShiftDataControlUpdate/None,
+                a.  Set shift identification (2) to zero. */
+        pShiftData->shiftStatus         = OAPP_SHIFT_DATA_STATUS_ACTIVATED;
+        pShiftData->shiftId             = 0;
+        pShiftData->shiftStartTime      = pMYKI_OAShiftDataControl->StartTime;
+        pShiftData->shiftEndTime        = pMYKI_OAShiftDataControl->CloseTime;
+        nShiftId                        = myki_br_GetShiftId( pMYKI_OAShiftDataControl );
+        if ( nShiftId == 0 )
+        {
+            CsDbg( BRLL_RULE, "BR_VIX_OSC_3_5 : Shift portion already out-of-balance" );
+        }
+        else
+        if ( myki_br_ldt_OAppShiftControlUpdate( pData, pMYKI_OAShiftDataControl->ActiveRecordCount ) < 0 )
+        {
+            CsErrx( "BR_VIX_OSC_3_5 : myki_br_ldt_OAppShiftControlUpdate() failed" );
+            return  RULE_RESULT_ERROR;
+        }
+
+        /*  2.  Reset Driver shift data (3). */
+        pShiftData->paperTicketReturns                  = 0;
+        pShiftData->sundryItemReturns                   = 0;
+        pShiftData->cardReturns                         = 0;
+        pShiftData->shiftTotalsTPurse.RecordType        = PAYMENT_METHOD_TPURSE;
+        pShiftData->shiftTotalsTPurse.SalesCount        = 0;
+        pShiftData->shiftTotalsTPurse.SalesValue        = 0;
+        pShiftData->shiftTotalsTPurse.ReversalsCount    = 0;
+        pShiftData->shiftTotalsTPurse.ReversalsValue    = 0;
+        pShiftData->shiftTotalsCash.RecordType          = PAYMENT_METHOD_CASH;
+        pShiftData->shiftTotalsCash.SalesCount          = 0;
+        pShiftData->shiftTotalsCash.SalesValue          = 0;
+        pShiftData->shiftTotalsCash.ReversalsCount      = 0;
+        pShiftData->shiftTotalsCash.ReversalsValue      = 0;
+
+        /*  3.  Set shift portion status (4) to "Out-of-Balance". */
+        pShiftData->shiftPortionStatus                  = SHIFT_PORTION_OUT_OF_BALANCE;
+    }
+
+    /*  POST-CONDITIONS */
+    {
+        /*  1.  Shift portion is reset.
+            2.  Driver shift portion out-of-balance. */
+    }
+
+    CsDbg( BRLL_RULE, "BR_VIX_OSC_3_5 : Executed" );
+
+    return  RULE_RESULT_EXECUTED;
+}
