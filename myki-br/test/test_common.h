@@ -337,6 +337,19 @@ int     test_BR_LLSC_4_19_002c( MYKI_BR_ContextData_t *pData );
 int     test_BR_LLSC_4_19_002d( MYKI_BR_ContextData_t *pData );
 int     test_BR_LLSC_4_19_002e( MYKI_BR_ContextData_t *pData );
 
+//  test_BR_LLSC_4_20.c
+
+int     test_BR_LLSC_4_20_001a( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001b( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001c( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001d( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001e( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001f( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001g( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_001h( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_002a( MYKI_BR_ContextData_t *pData );
+int     test_BR_LLSC_4_20_002b( MYKI_BR_ContextData_t *pData );
+
 //  test_BR_LLSC_5_2.c
 int     test_BR_LLSC_5_2_001( MYKI_BR_ContextData_t *pData );
 int     test_BR_LLSC_5_2_002( MYKI_BR_ContextData_t *pData );
@@ -627,11 +640,15 @@ int test_BR_VIX_LLSC_20_2_002a( MYKI_BR_ContextData_t *pData );
 int test_BR_VIX_LLSC_21_1_001a( MYKI_BR_ContextData_t *pData );
 int test_BR_VIX_LLSC_21_1_001b( MYKI_BR_ContextData_t *pData );
 int test_BR_VIX_LLSC_21_1_002a( MYKI_BR_ContextData_t *pData );
+int test_BR_VIX_LLSC_21_1_002b( MYKI_BR_ContextData_t *pData );
+int test_BR_VIX_LLSC_21_1_002c( MYKI_BR_ContextData_t *pData );
 
 //  test_BR_VIX_LLSC_21_2.c
 int test_BR_VIX_LLSC_21_2_001a( MYKI_BR_ContextData_t *pData );
 int test_BR_VIX_LLSC_21_2_001b( MYKI_BR_ContextData_t *pData );
 int test_BR_VIX_LLSC_21_2_002a( MYKI_BR_ContextData_t *pData );
+int test_BR_VIX_LLSC_21_2_002b( MYKI_BR_ContextData_t *pData );
+int test_BR_VIX_LLSC_21_2_002c( MYKI_BR_ContextData_t *pData );
     
 //  test0nn.c
 

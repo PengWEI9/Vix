@@ -101,6 +101,8 @@
 #define UT_BR_LLSC_4_17_EXECUTE     MASTER_SWITCH
 #define UT_BR_LLSC_4_19_BYPASS      MASTER_SWITCH
 #define UT_BR_LLSC_4_19_EXECUTE     MASTER_SWITCH
+#define UT_BR_LLSC_4_20_BYPASS      MASTER_SWITCH
+#define UT_BR_LLSC_4_20_EXECUTE     MASTER_SWITCH
 
 #define UT_BR_LLSC_5_2_BYPASS       MASTER_SWITCH
 #define UT_BR_LLSC_5_2_EXECUTE      MASTER_SWITCH
@@ -394,6 +396,21 @@ static  struct
     { test_BR_LLSC_4_19_002c, "test_BR_LLSC_4_19_002c : Execute - Trip extension - exceeded maximum nHourMaximumDuration" },
     { test_BR_LLSC_4_19_002d, "test_BR_LLSC_4_19_002d : Execute - Trip extension - before StartOfBusinessDay" },
     { test_BR_LLSC_4_19_002e, "test_BR_LLSC_4_19_002e : Execute - Trip extension - after nHourEveningCutOff" },
+    #endif
+
+    #if     UT_BR_LLSC_4_20_BYPASS
+    { test_BR_LLSC_4_20_001a, "test_BR_LLSC_4_20_001a : Bypass - No product in used" },
+    { test_BR_LLSC_4_20_001b, "test_BR_LLSC_4_20_001b : Bypass - Product in used is not provisional product" },
+    { test_BR_LLSC_4_20_001c, "test_BR_LLSC_4_20_001c : Bypass - Product not expired" },
+    { test_BR_LLSC_4_20_001d, "test_BR_LLSC_4_20_001d : Bypass - BUS/TRAM transport mode and not same vehicle" },
+    { test_BR_LLSC_4_20_001e, "test_BR_LLSC_4_20_001e : Bypass - BUS/TRAM transport mode and not same service provider" },
+    { test_BR_LLSC_4_20_001d, "test_BR_LLSC_4_20_001d : Bypass - Scan-on at non-RAIL transport mode" },
+    { test_BR_LLSC_4_20_001f, "test_BR_LLSC_4_20_001f : Bypass - Zero TripTolerance" },
+    { test_BR_LLSC_4_20_001g, "test_BR_LLSC_4_20_001g : Bypass - Exceeded TripTolerance" },
+    #endif
+    #if     UT_BR_LLSC_4_20_EXECUTE
+    { test_BR_LLSC_4_20_002a, "test_BR_LLSC_4_20_002a : Execute - BUS/TRAM transport mode" },
+    { test_BR_LLSC_4_20_002b, "test_BR_LLSC_4_20_002b : Execute - RAIL transport mode" },
     #endif
 
     #if     UT_BR_LLSC_5_2_BYPASS
@@ -871,7 +888,9 @@ static  struct
     { test_BR_VIX_LLSC_21_1_001b, "test_BR_VIX_LLSC_21_1_001b : Bypass - debit amount greater than TPurse balance" },
     #endif
     #if     UT_BR_VIX_LLSC_21_1_EXECUTE
-    { test_BR_VIX_LLSC_21_1_002a, "test_BR_VIX_LLSC_21_1_002a : Executed, tpurse value debitted" },
+    { test_BR_VIX_LLSC_21_1_002a, "test_BR_VIX_LLSC_21_1_002a : Executed, tpurse value debited" },
+    { test_BR_VIX_LLSC_21_1_002b, "test_BR_VIX_LLSC_21_1_002b : Executed, (Dynamic.LoadTxValue - debit value) > 0" },
+    { test_BR_VIX_LLSC_21_1_002c, "test_BR_VIX_LLSC_21_1_002c : Executed, (Dynamic.LoadTxValue - debit value) < 0" },
     #endif
     
     #if     UT_BR_VIX_LLSC_21_2_BYPASS
@@ -880,6 +899,8 @@ static  struct
     #endif
     #if     UT_BR_VIX_LLSC_21_2_EXECUTE
     { test_BR_VIX_LLSC_21_2_002a, "test_BR_VIX_LLSC_21_2_002a : Executed, tpurse value refunded" },
+    { test_BR_VIX_LLSC_21_2_002b, "test_BR_VIX_LLSC_21_2_002b : Executed, (Dynamic.LoadTxValue + debit reversal value) > 0" },
+    { test_BR_VIX_LLSC_21_2_002c, "test_BR_VIX_LLSC_21_2_002c : Executed, (Dynamic.LoadTxValue + debit reversal value) < 0" },
     #endif
 
     //  Sequences

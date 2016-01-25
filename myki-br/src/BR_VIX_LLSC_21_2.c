@@ -35,7 +35,7 @@
 **
 **      1.  Perform TPurseUsage/Reverse transaction:
 **          a.  Increment TPurse balance (1) by the TPurse debit reversal amount (6).
-**      2.  Create usage log:
+**      2.  Create load log:
 **          a.  Definition:
 **              i.  If the transaction type is not set then
 **                  1.  Set the transaction type to Refund Value (4),
@@ -44,7 +44,10 @@
 **              iii.Set ProviderID to service provider id (3),
 **              iv. Set location to current location.
 **          b.  Value:
-**              i.  Set transaction value to debit reversal amount,
+**              i.  Set Dynamic.LoadTxValue to Dynamic.LoadTxValue + the debit reversal amount (7),
+**              ii. If the Dynamic.LoadTxValue is less than zero,
+**                  1.  Set the LoadLog.TxnValue to zero,
+**                  2.  Else set the LoadLog.TxnValue to Dynamic.LoadTxnValue.
 **              ii. Set new TPurse balance to TPurse balance after crediting,
 **              iii.Set payment method to TPurse (1).
 **          c.  Product:
@@ -127,7 +130,7 @@ RuleResult_e    BR_VIX_LLSC_21_2( MYKI_BR_ContextData_t *pData )
     MYKI_TAControl_t               *pMYKI_TAControl             = NULL;
     MYKI_TAPurseBalance_t          *pMYKI_TAPurseBalance        = NULL;
     MYKI_TAPurseControl_t          *pMYKI_TAPurseControl        = NULL;
-    TAppUsageLog_t                 *pAppUsageLog                = NULL;
+    TAppLoadLog_t                  *pTAppLoadLog                = NULL;
     int                             nResult                     = 0;
 
     CsDbg( BRLL_RULE, "BR_VIX_LLSC_21_2 : Start (T-Purse Deduct Value Reversal)" );
@@ -189,44 +192,57 @@ RuleResult_e    BR_VIX_LLSC_21_2( MYKI_BR_ContextData_t *pData )
             return  RULE_RESULT_ERROR;
         }
 
-        /*  2.  Create usage log */
+        /*  2.  Create load log */
         {
-            pData->InternalData.IsUsageLogUpdated       = TRUE;
-            pAppUsageLog                                = &pData->InternalData.UsageLogData;
+            pData->InternalData.IsLoadLogUpdated        = TRUE;
+            pTAppLoadLog                                = &pData->InternalData.LoadLogData;
 
             /*  a. Definition: */
             {
                 /*  i.  ControlBitmap: Value (Done by framework) */
                 /*  ii. If the transaction type is not set then */
-                if ( pAppUsageLog->transactionType == MYKI_BR_TRANSACTION_TYPE_NONE )
+                if ( pTAppLoadLog->transactionType == MYKI_BR_TRANSACTION_TYPE_NONE )
                 {
                     /*  1.  Set the transaction type to Refund Value (4), */
-                    pAppUsageLog->transactionType       = MYKI_BR_TRANSACTION_TYPE_REFUND_VALUE;
+                    pTAppLoadLog->transactionType       = MYKI_BR_TRANSACTION_TYPE_REFUND_VALUE;
                 }
                 else
                 {
                     /*  2.  Else set the transaction type to Multiple Actionlists (21). */
-                    pAppUsageLog->transactionType       = MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST;
+                    pTAppLoadLog->transactionType       = MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST;
                 }
 
                 /*  ii. Set ProviderId (3) = current device service provider (16) (Done by framework)
                     iv. Set TxDateTime (4) as current date time (12) (Done by framework)
                     v.  Set Location object (5) to current device location (i.e. Entry Point, Route, Stop ID) (Done by framework) */
+                pTAppLoadLog->transactionSequenceNumber = pMYKI_TAPurseControl->NextTxSeqNo - 1;
             }
 
             /*  b.  Value: */
             {
-                /*  i.  Set TxValue (6) = absolute value of T-Purse load amount */
-                pAppUsageLog->isTransactionValueSet      = TRUE;
-                pAppUsageLog->transactionValue           = (U32_t)pData->DynamicData.tPurseDebitAmount;
+                /*  i.  Set Dynamic.LoadTxValue to Dynamic.LoadTxValue + the debit reversal amount (6) */
+                pData->DynamicData.loadLogTxValue      += pData->DynamicData.tPurseDebitAmount;
+
+                /*  ii. If the Dynamic.LoadTxValue is less than zero then */
+                if ( pData->DynamicData.loadLogTxValue < 0 )
+                {
+                    /*  1.  Set the LoadLog.TxnValue to zero */
+                    pTAppLoadLog->transactionValue      = 0;
+                }
+                else
+                {
+                    /*  2.  Else set the LoadLog.TxnValue to Dynamic.LoadTxValue */
+                    pTAppLoadLog->transactionValue      = pData->DynamicData.loadLogTxValue;
+                }
+                pTAppLoadLog->isTransactionValueSet     = TRUE;
 
                 /*  iii.Set NewTPuserBalance (7) = T-Purse balance (10) */
-                pAppUsageLog->isNewTPurseBalanceSet      = TRUE;
-                pAppUsageLog->newTPurseBalance           = pMYKI_TAPurseBalance->Balance;
+                pTAppLoadLog->isNewTPurseBalanceSet     = TRUE;
+                pTAppLoadLog->newTPurseBalance          = pMYKI_TAPurseBalance->Balance;
 
                 /*  iv. Set PaymentMethod (8) = Cash (2) */
-                pAppUsageLog->isPaymentMethodSet         = TRUE;
-                pAppUsageLog->paymentMethod              = TAPP_USAGE_LOG_PAYMENT_METHOD_TPURSE;
+                pTAppLoadLog->isPaymentMethodSet        = TRUE;
+                pTAppLoadLog->paymentMethod             = TAPP_USAGE_LOG_PAYMENT_METHOD_TPURSE;
             }
         }
     }

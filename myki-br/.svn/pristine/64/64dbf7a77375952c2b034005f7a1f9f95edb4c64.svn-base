@@ -137,6 +137,7 @@ typedef enum
     SEQ_FUNCTION_ADD_VALUE_REVERSAL,    // TPurse top-up reversal
     SEQ_FUNCTION_DEBIT_TPURSE_VALUE,
     SEQ_FUNCTION_DEBIT_TPURSE_VALUE_REVERSAL,
+    SEQ_FUNCTION_ENQUIRY,               // Enquiry
 
 }   SequenceFunction_e;
 

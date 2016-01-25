@@ -115,7 +115,6 @@ int test_BR_VIX_LLSC_21_2_001a( MYKI_BR_ContextData_t *pData )
 
     /*  WHEN */
     {
-        /*  TPurse top-up amount is not entered */
         {
             pData->DynamicData.tPurseDebitAmount                            = 0;    /*  Invalid reversal amount */
         }
@@ -279,6 +278,8 @@ int test_BR_VIX_LLSC_21_2_002a( MYKI_BR_ContextData_t *pData )
             pData->DynamicData.entryPointId                                 = EntryPointId;
             pData->DynamicData.lineId                                       = LineId;
             pData->DynamicData.stopId                                       = StopId;
+            pData->DynamicData.loadLogTxValue                               = 0;
+            pData->InternalData.LoadLogData.transactionType                 = MYKI_BR_TRANSACTION_TYPE_NONE;
             pData->StaticData.serviceProviderId                             = ServiceProviderId;
             pData->Tariff.TPurseMaximumBalance                              = TPurseMaximumBalance;
         }
@@ -286,7 +287,6 @@ int test_BR_VIX_LLSC_21_2_002a( MYKI_BR_ContextData_t *pData )
 
     /*  WHEN */
     {
-        /*  TPurse top-up amount is not entered */
         {
             pData->DynamicData.tPurseDebitAmount                            = DebitAmount;
         }
@@ -306,6 +306,20 @@ int test_BR_VIX_LLSC_21_2_002a( MYKI_BR_ContextData_t *pData )
         UT_Assert( pMYKI_TAPurseBalance->Balance == ( Balance + DebitAmount ) );
         UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
 
+        /*  Make sure LoadLog is updated correctly */
+        UT_Assert( pData->InternalData.IsLoadLogUpdated == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_REFUND_VALUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionSequenceNumber == NextTxSeqNo );
+        UT_Assert( pData->InternalData.LoadLogData.isTransactionValueSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionValue == DebitAmount );
+        UT_Assert( pData->InternalData.LoadLogData.isNewTPurseBalanceSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.newTPurseBalance == ( Balance + DebitAmount ) );
+        UT_Assert( pData->InternalData.LoadLogData.isPaymentMethodSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.paymentMethod == TAPP_USAGE_LOG_PAYMENT_METHOD_TPURSE );
+
+        /*  Make sure DynamicData is updated correctly */
+        UT_Assert( pData->DynamicData.loadLogTxValue == DebitAmount );
+
         /*  Make sure reject code is correct */
         UT_Assert( pData->ReturnedData.acceptReason == MYKI_BR_ACCEPT_TPURSE_LOADED );
         UT_Assert( pData->ReturnedData.remainingBalance == ( Balance + DebitAmount ) );
@@ -314,3 +328,193 @@ int test_BR_VIX_LLSC_21_2_002a( MYKI_BR_ContextData_t *pData )
         return  UT_Result( );
     }
 }   /* test_BR_VIX_LLSC_21_2_002a( ) */
+
+int test_BR_VIX_LLSC_21_2_002b( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t       *pMYKI_CAControl         = NULL;
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_TAPurseBalance_t  *pMYKI_TAPurseBalance    = NULL;
+    MYKI_TAPurseControl_t  *pMYKI_TAPurseControl    = NULL;
+    int                     TPurseMaximumBalance    = 99999;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    int                     DebitAmount             = 550;
+    int                     Balance                 = 1000;
+    int                     LoadLogTxValue          = 0;
+    int                     NextTxSeqNo             = 5;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(      &pMYKI_CAControl        ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(      &pMYKI_TAControl        ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet( &pMYKI_TAPurseBalance   ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet( &pMYKI_TAPurseControl   ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            MYKI_CS_OpenCard( MYKI_CS_OPEN_DEFAULT, NULL );
+            pMYKI_CAControl->Status                                         = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                   = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                               = NextTxSeqNo;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->DynamicData.loadLogTxValue                               = \
+            LoadLogTxValue                                                  = 0 - ( DebitAmount - 1 );
+            pData->InternalData.LoadLogData.transactionType                 = MYKI_BR_TRANSACTION_TYPE_REVERSE_VALUE;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+            pData->Tariff.TPurseMaximumBalance                              = TPurseMaximumBalance;
+        }
+    }
+
+    /*  WHEN */
+    {
+        {
+            pData->DynamicData.tPurseDebitAmount                            = DebitAmount;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_21_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_EXECUTED );
+
+        /*  Make sure card image is correct */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == ( Balance + DebitAmount ) );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
+
+        /*  Make sure LoadLog is updated correctly */
+        UT_Assert( pData->InternalData.IsLoadLogUpdated == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST );
+        UT_Assert( pData->InternalData.LoadLogData.transactionSequenceNumber == NextTxSeqNo );
+        UT_Assert( pData->InternalData.LoadLogData.isTransactionValueSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionValue == ( LoadLogTxValue + DebitAmount ) );
+        UT_Assert( pData->InternalData.LoadLogData.isNewTPurseBalanceSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.newTPurseBalance == ( Balance + DebitAmount ) );
+        UT_Assert( pData->InternalData.LoadLogData.isPaymentMethodSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.paymentMethod == TAPP_USAGE_LOG_PAYMENT_METHOD_TPURSE );
+
+        /*  Make sure DynamicData is updated correctly */
+        UT_Assert( pData->DynamicData.loadLogTxValue == ( LoadLogTxValue + DebitAmount ) );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.acceptReason == MYKI_BR_ACCEPT_TPURSE_LOADED );
+        UT_Assert( pData->ReturnedData.remainingBalance == ( Balance + DebitAmount ) );
+        UT_Assert( pData->ReturnedData.txnSeqNo == NextTxSeqNo );
+
+        return  UT_Result( );
+    }
+}   /* test_BR_VIX_LLSC_21_2_002b( ) */
+
+int test_BR_VIX_LLSC_21_2_002c( MYKI_BR_ContextData_t *pData )
+{
+    MYKI_CAControl_t       *pMYKI_CAControl         = NULL;
+    MYKI_TAControl_t       *pMYKI_TAControl         = NULL;
+    MYKI_TAPurseBalance_t  *pMYKI_TAPurseBalance    = NULL;
+    MYKI_TAPurseControl_t  *pMYKI_TAPurseControl    = NULL;
+    int                     TPurseMaximumBalance    = 99999;
+    int                     EntryPointId            = 53;
+    int                     LineId                  = 66;
+    int                     StopId                  = 79;
+    int                     ServiceProviderId       = 100;
+    int                     DebitAmount             = 550;
+    int                     Balance                 = 1000;
+    int                     LoadLogTxValue          = 0;
+    int                     NextTxSeqNo             = 5;
+    RuleResult_e            RuleResult              = RULE_RESULT_ERROR;
+
+    if ( pData == NULL ||
+         MYKI_CS_CAControlGet(      &pMYKI_CAControl        ) != MYKI_CS_OK ||
+         MYKI_CS_TAControlGet(      &pMYKI_TAControl        ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseBalanceGet( &pMYKI_TAPurseBalance   ) != MYKI_CS_OK ||
+         MYKI_CS_TAPurseControlGet( &pMYKI_TAPurseControl   ) != MYKI_CS_OK )
+    {
+        return FALSE;
+    }
+
+    /*  GIVEN */
+    {
+        /*  Card image */
+        {
+            MYKI_CS_OpenCard( MYKI_CS_OPEN_DEFAULT, NULL );
+            pMYKI_CAControl->Status                                         = CARD_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Status                                         = TAPP_CONTROL_STATUS_ACTIVATED;
+            pMYKI_TAControl->Directory[ 0 ].Status                          = TAPP_CONTROL_DIRECTORY_STATUS_ACTIVATED;
+            pMYKI_TAPurseBalance->Balance                                   = Balance;
+            pMYKI_TAPurseControl->NextTxSeqNo                               = NextTxSeqNo;
+        }
+
+        /*  BR context data */
+        {
+            pData->DynamicData.entryPointId                                 = EntryPointId;
+            pData->DynamicData.lineId                                       = LineId;
+            pData->DynamicData.stopId                                       = StopId;
+            pData->DynamicData.loadLogTxValue                               = \
+            LoadLogTxValue                                                  = 0 - ( DebitAmount + 1 );
+            pData->InternalData.LoadLogData.transactionType                 = MYKI_BR_TRANSACTION_TYPE_REVERSE_VALUE;
+            pData->StaticData.serviceProviderId                             = ServiceProviderId;
+            pData->Tariff.TPurseMaximumBalance                              = TPurseMaximumBalance;
+        }
+    }
+
+    /*  WHEN */
+    {
+        {
+            pData->DynamicData.tPurseDebitAmount                            = DebitAmount;
+        }
+
+        /*  Executes business rule */
+        RuleResult  = BR_VIX_LLSC_21_2( pData );
+    }
+
+    /*  THEN */
+    {
+        UT_Start( );
+
+        /*  Make sure business rule is bypassed */
+        UT_Assert( RuleResult == RULE_RESULT_EXECUTED );
+
+        /*  Make sure card image is correct */
+        UT_Assert( pMYKI_TAPurseBalance->Balance == ( Balance + DebitAmount ) );
+        UT_Assert( pMYKI_TAPurseControl->NextTxSeqNo == ( NextTxSeqNo + 1 ) );
+
+        /*  Make sure LoadLog is updated correctly */
+        UT_Assert( pData->InternalData.IsLoadLogUpdated == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionType == MYKI_BR_TRANSACTION_TYPE_MULTIPLE_ACTION_LIST );
+        UT_Assert( pData->InternalData.LoadLogData.transactionSequenceNumber == NextTxSeqNo );
+        UT_Assert( pData->InternalData.LoadLogData.isTransactionValueSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.transactionValue == 0 );
+        UT_Assert( pData->InternalData.LoadLogData.isNewTPurseBalanceSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.newTPurseBalance == ( Balance + DebitAmount ) );
+        UT_Assert( pData->InternalData.LoadLogData.isPaymentMethodSet == TRUE );
+        UT_Assert( pData->InternalData.LoadLogData.paymentMethod == TAPP_USAGE_LOG_PAYMENT_METHOD_TPURSE );
+
+        /*  Make sure DynamicData is updated correctly */
+        UT_Assert( pData->DynamicData.loadLogTxValue == ( LoadLogTxValue + DebitAmount ) );
+
+        /*  Make sure reject code is correct */
+        UT_Assert( pData->ReturnedData.acceptReason == MYKI_BR_ACCEPT_TPURSE_LOADED );
+        UT_Assert( pData->ReturnedData.remainingBalance == ( Balance + DebitAmount ) );
+        UT_Assert( pData->ReturnedData.txnSeqNo == NextTxSeqNo );
+
+        return  UT_Result( );
+    }
+}   /* test_BR_VIX_LLSC_21_2_002c( ) */

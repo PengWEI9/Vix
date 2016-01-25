@@ -403,8 +403,8 @@ static Sequence_t  SEQ_LLSC_21 =
 {
     "SEQ_LLSC_21 - Assessment of provisional trip extension",
     {
-        EXECUTE_RULE( BR_LLSC_4_19, GOTO_RULE( BR_LLSC_4_20 )                      ,   GOTO_RULE( BR_LLSC_4_20 ) ),
-        EXECUTE_RULE( BR_LLSC_4_20, GOTO_RULE( BR_LLSC_4_7 )                      ,  GOTO_RULE( BR_LLSC_4_7 ) ),
+        EXECUTE_RULE( BR_LLSC_4_19, GOTO_RULE( BR_LLSC_4_20 )                     ,   GOTO_RULE( BR_LLSC_4_20 ) ),
+        EXECUTE_RULE( BR_LLSC_4_20, GOTO_RULE( BR_LLSC_4_7 )                      ,   GOTO_RULE( BR_LLSC_4_7 ) ),
         EXECUTE_RULE( BR_LLSC_4_7 , RETURN_VALUE( SEQ_RESULT_FORCED_SCAN_OFF )    ,   RETURN_VALUE( SEQ_RESULT_SCAN_OFF_REQUIRED ) ),
         { STEP_TYPE_DONE }
     }
@@ -413,7 +413,8 @@ static Sequence_t  SEQ_LLSC_21b =
 {
     "SEQ_LLSC_21 - Assessment of provisional trip extension",
     {
-        EXECUTE_RULE( BR_LLSC_4_19, GOTO_RULE( BR_LLSC_4_7 )                      ,   GOTO_RULE( BR_LLSC_4_7 ) ),
+        EXECUTE_RULE( BR_LLSC_4_19, GOTO_RULE( BR_LLSC_4_20 )                     ,   GOTO_RULE( BR_LLSC_4_20 ) ),
+        EXECUTE_RULE( BR_LLSC_4_20, GOTO_RULE( BR_LLSC_4_7 )                      ,   GOTO_RULE( BR_LLSC_4_7 ) ),
         EXECUTE_RULE( BR_LLSC_4_7 , RETURN_VALUE( SEQ_RESULT_FORCED_SCAN_OFF )    ,   RETURN_VALUE( SEQ_RESULT_SCAN_OFF_REQUIRED ) ),
         { STEP_TYPE_DONE }
     }
@@ -1281,6 +1282,37 @@ Sequence_t  SEQ_DebitTPurseValueReversal =
     }
 };  /*  SEQ_DebitTPurseValueReversal */
 
+    /*      Enquiry - VIX specific business rule
+     *
+     *      SEQ_RESULT_REJECT                   debit TPurse value failed
+     *      SEQ_RESULT_SCAN_ON                  debit TPurse value completed successfully
+     *      SEQ_RESULT_PRECOMMIT_CHECK_FAILED   Failed pre-commit check
+     */
+Sequence_t  SEQ_Enquiry =
+{
+    "SEQ_Enquiry - Enquiry",
+    {
+        EXECUTE_RULE( BR_VIX_0_3,           GOTO_SEQUENCE( SEQ_LLSC_1 ),            RETURN_VALUE( SEQ_RESULT_REJECT ) ),
+        {
+            STEP_SEQUENCE( SEQ_LLSC_1 ),
+            {
+                { SEQ_RESULT_MULTIPLE_CARDS,                                        RETURN_VALUE( SEQ_RESULT_REJECT ) },
+                { SEQ_RESULT_REJECT,                                                RETURN_VALUE( SEQ_RESULT_REJECT ) },
+                { SEQ_RESULT_CARD_INITIALISED,                                      GOTO_SEQUENCE( SEQ_LLSC_2 ) }
+            }
+        },
+        {
+            STEP_SEQUENCE( SEQ_LLSC_2 ),
+            {
+                { SEQ_RESULT_INVALID_TRANSIT_APPLICATION_STATUS,                    RETURN_VALUE( SEQ_RESULT_REJECT ) },
+                { SEQ_RESULT_ACTIONLISTS_PROCESSED,                                 GOTO_RULE( BR_LLSC_99_1 ) }
+            }
+        },
+        EXECUTE_RULE( BR_LLSC_99_1,         RETURN_VALUE( SEQ_RESULT_SCAN_ON ),     RETURN_VALUE( SEQ_RESULT_PRECOMMIT_CHECK_FAILED ) ),
+        { STEP_TYPE_DONE }
+    }
+};  /*  SEQ_Enquiry */
+
 //=============================================================================
 //
 //  Find a step within a sequence
@@ -2098,6 +2130,7 @@ int     MYKI_BR_ExecuteSequence( MYKI_BR_ContextData_t *pData, SequenceFunction_
     case    SEQ_FUNCTION_ADD_VALUE_REVERSAL:            pSequence   = &SEQ_AddValueReversal;            break;
     case    SEQ_FUNCTION_DEBIT_TPURSE_VALUE:            pSequence   = &SEQ_DebitTPurseValue;            break;
     case    SEQ_FUNCTION_DEBIT_TPURSE_VALUE_REVERSAL:   pSequence   = &SEQ_DebitTPurseValueReversal;    break;
+    case    SEQ_FUNCTION_ENQUIRY:                       pSequence   = &SEQ_Enquiry;                     break;
     default:
         /*  Others! */
         CsDbg( BRLL_SESSION, "MYKI_BR_Execute : Invalid sequence (%d), returning MYKI_BR_RESULT_ERROR", (int)sequenceFunction );
